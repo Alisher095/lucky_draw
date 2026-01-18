@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Winner Selection{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">Winner selection for {{ draw.title }}</div>
+  <div class="card-body">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" class="mb-4">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="count" class="form-label">Winners to select</label>
+        <input type="number" class="form-control" id="count" name="count" min="1" value="{{ default_count }}" required>
+      </div>
+      <div class="mb-3">
+        <label for="seed" class="form-label">Seed (optional)</label>
+        <input type="text" class="form-control" id="seed" name="seed" value="{{ request.POST.seed|default:'' }}">
+        <small class="text-muted">Leave blank for random seed.</small>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="force" name="force" value="1">
+        <label class="form-check-label" for="force">Force replace existing winners</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Select Winners</button>
+    </form>
+
+    <h5>Participants ({{ participant_count }})</h5>
+    <p class="text-muted">{{ allow_multiple|yesno:"Multi-winner draw,Single winner draw" }}</p>
+
+    {% if winners %}
+      <div class="list-group">
+        {% for winner in winners %}
+          <div class="list-group-item">
+            <strong>#{{ winner.position }}</strong> {{ winner.user.get_full_name|default:winner.user.username }} ({{ winner.user.email }})
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">No winners selected yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

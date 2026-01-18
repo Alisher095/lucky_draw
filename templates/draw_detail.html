@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <!-- Left: draw main -->
+    <div class="col-lg-8 mb-4">
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h2 class="mb-1">{{ draw.title }}</h2>
+              <p class="text-muted mb-2 small">
+                {% if draw.start_date %}Starts: {{ draw.start_date }}{% endif %}
+                {% if draw.end_date %} • Ends: {{ draw.end_date }}{% endif %}
+                {% if draw.result_date %} • Result: {{ draw.result_date }}{% endif %}
+              </p>
+            </div>
+
+            <div class="text-end">
+              {% if is_closed %}
+                <span class="badge bg-secondary">Closed</span>
+              {% elif draw.end_date and draw.end_date <= today %}
+                <span class="badge bg-danger">Ending Today</span>
+              {% else %}
+                <span class="badge bg-success">Open</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <hr>
+
+          <p class="mb-3 text-muted">{{ draw.description|default:"No description provided." }}</p>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div><strong>Prize</strong></div>
+              <div class="small">{{ draw.prize_name }}{% if draw.prize_value %} — {{ draw.prize_value }}{% endif %}</div>
+            </div>
+            <div class="col-sm-3">
+              <div><strong>Winners</strong></div>
+              <div class="small">{{ draw.winners_count }}</div>
+            </div>
+            <div class="col-sm-3">
+              <div><strong>Participants</strong></div>
+              <div class="small">{{ entries_count }}</div>
+            </div>
+          </div>
+
+          {% if winners %}
+            <div class="mb-3">
+              <h5 class="mb-2">Winners</h5>
+              <ul class="list-group list-group-flush">
+                {% for w in winners %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      {{ w.user.get_full_name|default:w.user.username }}
+                      <small class="text-muted d-block">Position {{ w.position }}</small>
+                    </div>
+                    <small class="text-muted">{{ w.won_at }}</small>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+
+      <!-- Participants list -->
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Participants ({{ entries_count }})</h5>
+          <ul class="list-group list-group-flush">
+            {% for entry in entries %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  {{ entry.user.get_full_name|default:entry.user.username }}
+                  <div class="small text-muted">{{ entry.entry_time }}</div>
+                </div>
+                <div class="small text-muted">{{ entry.id }}</div>
+              </li>
+            {% empty %}
+              <li class="list-group-item">No participants yet. Be the first to join!</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: action card -->
+    <div class="col-lg-4">
+      <div class="card mb-3">
+        <div class="card-body text-center">
+          <h5 class="mb-2">{{ draw.title }}</h5>
+
+          {% if draw.end_date %}
+            <p class="mb-1 small text-muted">Ends: {{ draw.end_date }}</p>
+          {% endif %}
+          {% if draw.start_date %}
+            <p class="mb-3 small text-muted">Starts: {{ draw.start_date }}</p>
+          {% endif %}
+
+          {% if is_closed %}
+            <span class="badge bg-secondary mb-3">Closed</span>
+            {% if user_joined %}
+              <div class="alert alert-success my-3">You participated in this draw.</div>
+            {% else %}
+              <div class="alert alert-warning my-3">This draw is closed and no longer accepting entries.</div>
+            {% endif %}
+            <a href="{% url 'user_dashboard' %}" class="btn btn-outline-primary w-100">Back to Dashboard</a>
+
+          {% else %}
+            {% if user_joined %}
+              <div class="alert alert-success mb-3">You are participating in this draw.</div>
+              <a href="{% url 'user_dashboard' %}" class="btn btn-outline-primary w-100 mb-2">Back to Dashboard</a>
+
+              <form method="get" action="{% url 'draw_detail' draw.id %}">
+                <button type="submit" class="btn btn-secondary w-100">Refresh</button>
+              </form>
+
+            {% else %}
+              <form method="post" action="{% url 'join_draw' draw.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-lg w-100 mb-2">Participate Now</button>
+              </form>
+
+              <a href="{% url 'user_dashboard' %}" class="btn btn-link w-100">Back to Dashboard</a>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h6 class="mb-2">Created by</h6>
+          <p class="mb-1">{{ draw.created_by.get_full_name|default:draw.created_by.username }}</p>
+          <p class="small text-muted mb-0">Draw ID: {{ draw.id }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

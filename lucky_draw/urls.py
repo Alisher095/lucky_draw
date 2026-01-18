@@ -1,0 +1,21 @@
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+from lucky_draw import views
+
+urlpatterns = [
+    # Django admin
+    path('admin/', admin.site.urls),
+
+    # Home page
+    path('', views.index, name='home'),
+
+    # All account-related routes (login, register, dashboards, profile, user mgmt, join draw)
+    path('accounts/', include('accounts.urls')),
+]
+
+# Serve static files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

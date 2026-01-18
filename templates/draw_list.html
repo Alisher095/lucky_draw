@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">All Draws</h3>
+    <a class="btn btn-outline-secondary" href="{% url 'user_dashboard' %}">Back to Dashboard</a>
+  </div>
+
+  <div class="row g-3">
+    {% for draw in draws %}
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h5 class="card-title mb-1">{{ draw.title }}</h5>
+                <p class="small text-muted mb-1">
+                  {% if draw.end_date %}Ends: {{ draw.end_date }}{% endif %}
+                  {% if draw.start_date %} • Starts: {{ draw.start_date }}{% endif %}
+                </p>
+              </div>
+              <div class="text-end">
+                {% if draw.end_date and draw.end_date < today %}
+                  <span class="badge bg-secondary">Closed</span>
+                {% else %}
+                  <span class="badge bg-success">Open</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <p class="text-muted small mb-2">{{ draw.description|truncatechars:120 }}</p>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <div class="small text-muted">
+                {{ draw.winners_count }} winner{% if draw.winners_count|default:0 > 1 %}s{% endif %}
+              </div>
+              <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'draw_detail' draw.id %}">View</a>
+                <form method="post" action="{% url 'join_draw' draw.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-primary">Participate</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="alert alert-info">No draws found.</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

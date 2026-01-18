@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Online Lucky Draw System</title>
+{% load static %}
+<link rel="stylesheet" href="{% static 'accounts/css/admin.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<!-- In your admin dashboard sidebar -->
+<nav id="sidebar">
+    <div class="sidebar-header">
+        <h3>LuckyDraw Admin</h3>
+        <small>Welcome, {{ request.user.get_full_name }}!</small>
+    </div>
+
+    <ul class="list-unstyled components">
+        <li class="active">
+            <a href="#dashboard" class="nav-link" data-section="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </li>
+        <li>
+            <a href="#drawManagement" class="nav-link" data-section="drawManagement">
+                <i class="fas fa-ticket-alt"></i> Draw Management
+            </a>
+        </li>
+        <li>
+            <a href="#createDraw" class="nav-link" data-section="createDraw">
+                <i class="fas fa-plus-circle"></i> Create New Draw
+            </a>
+        </li>
+        
+        <!-- NEW: Winner Selection Menu Item -->
+<li>
+    {% if recent_draws %}
+        <a href="{% url 'winner_selection_page' recent_draws.0.id %}" class="nav-link">
+            <i class="fas fa-trophy me-2"></i> Winner Selection
+        </a>
+    {% elif focus_draw %}
+        <a href="{% url 'winner_selection_page' focus_draw.id %}" class="nav-link">
+            <i class="fas fa-trophy me-2"></i> Winner Selection
+        </a>
+    {% else %}
+        <a href="{% url 'winner_selection_dashboard' %}" class="nav-link">
+            <i class="fas fa-trophy me-2"></i> Winner Selection
+        </a>
+    {% endif %}
+</li>
+        
+        {% if focus_draw %}
+        <li>
+            <a href="{% url 'draw_participants' focus_draw.id %}" class="nav-link">
+                <i class="fas fa-user-friends me-2"></i> Participants
+            </a>
+        </li>
+        {% else %}
+        <li>
+            <a href="{% url 'all_draws' %}" class="nav-link">
+                <i class="fas fa-user-friends me-2"></i> Participants
+            </a>
+        </li>
+        {% endif %}
+        
+        <li>
+            <a href="#reports" class="nav-link" data-section="reports">
+                <i class="fas fa-chart-bar"></i> Reports & Analytics
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'logout' %}">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </li>
+    </ul>
+</nav>
+
+    <div id="content">
+        <div id="dashboard" class="dashboard-section active">
+            <div class="container-fluid">
+                <div class="row g-3">
+                    <div class="col-12">
+                        {% if messages %}
+                        <ul class="list-unstyled mb-3">
+                            {% for msg in messages %}
+                            <li class="alert alert-{{ msg.tags }}">{{ msg }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-lg-8">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-2">Total Draws</h6>
+                                        <h3 class="mb-0">{{ stats.total_draws }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-2">Total Entries</h6>
+                                        <h3 class="mb-0">{{ stats.total_entries }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-2">Total Winners</h6>
+                                        <h3 class="mb-0">{{ stats.total_winners }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+
+<div class="col-12 mt-3">
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <h5 class="mb-0">Recent Draws</h5>
+      {% if recent_draws|length > 0 %}
+        <a href="{% url 'winner_selection_page' recent_draws.0.id %}" class="btn btn-sm btn-success"
+           onclick="return confirm('Open winner selection for {{ recent_draws.0.title }}?')">
+          <i class="fas fa-trophy me-1"></i> Winner Selection (Latest)
+        </a>
+      {% endif %}
+    </div>
+
+    <div class="card-body">
+      <div class="list-group">
+        {% for d in recent_draws %}
+          <div class="list-group-item d-flex justify-content-between align-items-start">
+            <div class="me-3" style="flex:1 1 auto;">
+              <div class="d-flex align-items-baseline">
+                <strong class="me-2">{{ d.title }}</strong>
+                {% if d.winners_selected %}
+                  <span class="badge bg-success">Winners announced</span>
+                {% elif d.end_date and d.end_date <= today %}
+                  <span class="badge bg-info">Selection pending</span>
+                {% else %}
+                  <span class="badge bg-secondary">Open</span>
+                {% endif %}
+              </div>
+              <div class="small text-muted">Ends: {% if d.end_date %}{{ d.end_date }}{% else %}—{% endif %}</div>
+            </div>
+
+            <div class="text-end">
+<a href="{% url 'draw_participants' d.id %}" class="btn btn-sm btn-outline-primary mb-2">View Participants</a>
+
+{% if d.id %}
+  {% if d.winners_selected or d.end_date and d.end_date > today %}
+    <a href="#" class="btn btn-sm btn-success disabled mb-2" title="Selection disabled">Winner Selection</a>
+  {% else %}
+    <a href="{% url 'winner_selection_page' d.id %}" class="btn btn-sm btn-success mb-2"
+       onclick="return confirm('Open winner selection page for {{ d.title }}?')">
+      <i class="fas fa-trophy me-1"></i> Winner Selection
+    </a>
+  {% endif %}
+{% else %}
+  <button class="btn btn-sm btn-success mb-2" disabled title="Missing draw id">Winner Selection</button>
+{% endif %}
+
+
+              {% if d.winners_selected %}
+                <div class="small text-start mt-2">
+                  <strong>Winners</strong>
+                  <ul class="mb-0 ps-3">
+                    {% for w in d.draw_winners %}
+                      <li>{{ forloop.counter }}. {{ w.user.username }}{% if w.position %} (#{{ w.position }}){% endif %}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% elif d.end_date and d.end_date <= today %}
+                <div class="small text-muted mt-2">Winners will be selected automatically by the system shortly.</div>
+              {% else %}
+                <div class="small text-muted mt-2">Selection scheduled at: {% if d.result_date %}{{ d.result_date }}{% else %}after draw end{% endif %}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% empty %}
+          <div class="list-group-item">No recent draws</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+                        </div>
+                    </div>
+
+ <div class="col-lg-4">
+  <div class="card">
+ <div class="card-header d-flex justify-content-between align-items-center">
+  <h5 class="card-title mb-0">Draw Status</h5>
+
+  {% if focus_draw and focus_draw.id %}
+    <div>
+      <a href="{% url 'winner_selection_page' focus_draw.id %}" class="btn btn-sm btn-warning me-2"
+         onclick="return confirm('Open winner selection for {{ focus_draw.title }}?')">
+        <i class="fas fa-trophy me-1"></i> Winner Page
+      </a>
+
+      <form method="post" action="{% url 'select_winners' focus_draw.id %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-warning"
+                onclick="return confirm('Quick select winners for {{ focus_draw.title }}?')"
+                {% if focus_draw.winners_selected %} disabled {% endif %}>
+          Quick Select
+        </button>
+      </form>
+    </div>
+  {% else %}
+    <span class="text-muted small">No draw selected</span>
+  {% endif %}
+</div>
+
+    <div class="card-body">
+      <div class="chart-container">
+        <canvas id="drawStatusChart"></canvas>
+      </div>
+
+      <details class="mt-3">
+        <summary class="small text-muted">Advanced selection options</summary>
+        {% if focus_draw %}
+        <form method="post" action="{% url 'select_winners' focus_draw.id %}" class="mt-2">
+          {% csrf_token %}
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small mb-1">Winners count</label>
+              <input type="number" name="count" class="form-control form-control-sm" min="1"
+                     value="{{ focus_draw.winners_count }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label small mb-1">Seed (optional)</label>
+              <input type="text" name="seed" class="form-control form-control-sm" placeholder="my-seed-123">
+            </div>
+          </div>
+
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" value="1" id="forceSelect" name="force">
+            <label class="form-check-label small" for="forceSelect">Replace existing winners (force)</label>
+          </div>
+
+          <button type="submit" class="btn btn-sm btn-outline-warning mt-2"
+                  onclick="return confirm('Proceed with advanced selection? This may replace existing winners if Force is checked.')">
+            Run selection
+          </button>
+        </form>
+        {% else %}
+        <div class="small text-muted mt-2">Select a draw from Recent Draws to enable advanced options</div>
+        {% endif %}
+      </details>
+    </div>
+  </div>
+
+  <div class="card mt-3" id="winner-selection-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Winner Selection</h5>
+        {% if focus_draw and focus_draw.id %}
+            <small class="text-muted">Draw: {{ focus_draw.title }}</small>
+        {% else %}
+            <small class="text-muted">No draw selected</small>
+        {% endif %}
+    </div>
+
+    <div class="card-body">
+        {% if focus_draw and focus_draw.id %}
+            {% if focus_draw.winners_selected %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Winners already selected for this draw.
+                </div>
+            {% elif focus_draw.end_date and focus_draw.end_date > today %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Draw is still active. Cannot select winners yet.
+                </div>
+            {% else %}
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Winners to pick</label>
+                    <input id="ws_count" type="number" class="form-control form-control-sm" min="1" 
+                           value="{{ focus_draw.winners_count|default:1 }}">
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Seed (optional)</label>
+                    <input id="ws_seed" type="text" class="form-control form-control-sm" 
+                           placeholder="seed for reproducible runs">
+                </div>
+
+                <div class="form-check mb-3">
+                    <input id="ws_force" class="form-check-input" type="checkbox" value="1">
+                    <label class="form-check-label small" for="ws_force">
+                        Force replace existing winners
+                    </label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button id="ws_run_btn" class="btn btn-warning btn-sm" 
+                            onclick="runWinnerSelection({{ focus_draw.id }}, this)">
+                        <i class="fas fa-play me-1"></i> Run Selection (AJAX)
+                    </button>
+
+                    <form method="post" action="{% url 'select_winners' focus_draw.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="count" value="{{ focus_draw.winners_count|default:1 }}">
+                        <button type="submit" class="btn btn-outline-warning btn-sm"
+                                onclick="return confirm('Are you sure you want to select winners for {{ focus_draw.title }}?')">
+                            Quick Select (POST)
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+
+            <hr>
+            <div id="ws_results">
+                <h6 class="small mb-2">Current winners</h6>
+                {% if focus_draw.draw_winners %}
+                    <ul id="ws_winners_list" class="mb-0 ps-3">
+                        {% for w in focus_draw.draw_winners %}
+                            <li>{{ forloop.counter }}. {{ w.user.username }} 
+                                {% if w.position %} (#{{ w.position }}){% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="small text-muted">No winners selected yet for this draw.</div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="small text-muted">Select a draw from Recent Draws to enable selection controls.</div>
+        {% endif %}
+    </div>
+</div>
+  <!-- END new card -->
+
+</div>
+                </div>
+            </div>
+        </div>
+        <div id="createDraw" class="dashboard-section">
+            <div class="container-fluid mt-4">
+                <h2 class="h4 mb-3"><i class="fas fa-plus-circle me-2"></i>Create New Lucky Draw</h2>
+
+                {% if messages %}
+                <ul class="list-unstyled">
+                    {% for msg in messages %}
+                    <li class="alert alert-{{ msg.tags }}">{{ msg }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                <form method="post" id="drawForm">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <h4 class="section-title"><i class="fas fa-info-circle me-2"></i>Basic Information</h4>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ draw_form.title.label_tag }}
+                                {{ draw_form.title }}
+                                {{ draw_form.title.errors }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ draw_form.draw_type.label_tag }}
+                                {{ draw_form.draw_type }}
+                                {{ draw_form.draw_type.errors }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            {{ draw_form.description.label_tag }}
+                            {{ draw_form.description }}
+                            {{ draw_form.description.errors }}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="section-title"><i class="fas fa-gift me-2"></i>Prize Details</h4>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ draw_form.prize_name.label_tag }}
+                                {{ draw_form.prize_name }}
+                                {{ draw_form.prize_name.errors }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ draw_form.prize_value.label_tag }}
+                                {{ draw_form.prize_value }}
+                                {{ draw_form.prize_value.errors }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            {{ draw_form.winners_count.label_tag }}
+                            {{ draw_form.winners_count }}
+                            {{ draw_form.winners_count.errors }}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="section-title"><i class="fas fa-calendar-alt me-2"></i>Schedule</h4>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                {{ draw_form.start_date.label_tag }}
+                                {{ draw_form.start_date }}
+                                {{ draw_form.start_date.errors }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                {{ draw_form.end_date.label_tag }}
+                                {{ draw_form.end_date }}
+                                {{ draw_form.end_date.errors }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                {{ draw_form.result_date.label_tag }}
+                                {{ draw_form.result_date }}
+                                {{ draw_form.result_date.errors }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="reset" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                        <button type="submit" name="create_draw" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-1"></i>Create Draw
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="participants" class="dashboard-section">
+            <div class="container-fluid mt-3">
+                <h4 class="mb-3">Quick Participant Actions</h4>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <a class="btn btn-outline-secondary" href="{% url 'all_draws' %}">View all draws</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const links = document.querySelectorAll('#sidebar .nav-link[data-section]');
+    const sections = document.querySelectorAll('.dashboard-section');
+
+    links.forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const target = link.dataset.section;
+        sections.forEach(sec => sec.classList.remove('active'));
+        document.getElementById(target).classList.add('active');
+        links.forEach(l => l.parentElement.classList.remove('active'));
+        link.parentElement.classList.add('active');
+      });
+    });
+  });
+</script>
+<script>
+    async function runWinnerSelection(drawId, btn) {
+    if (!confirm('Run winner selection now? This will write winners to the database.')) return;
+    
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Processing...';
+    btn.disabled = true;
+    
+    const url = `/select-winners/${drawId}/`;  // یا آپ کا اصل URL pattern
+    const csrftoken = getCookie('csrftoken');
+
+    const count = document.getElementById('ws_count').value;
+    const seed = document.getElementById('ws_seed').value;
+    const force = document.getElementById('ws_force').checked ? '1' : '';
+
+    const formData = new FormData();
+    formData.append('count', count);
+    if (seed) formData.append('seed', seed);
+    if (force) formData.append('force', force);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+
+        if (data.success) {
+            // Update winners list
+            const resultsDiv = document.getElementById('ws_results');
+            if (data.winners && data.winners.length > 0) {
+                let winnersHtml = '<h6 class="small mb-2">Current winners</h6><ul class="mb-0 ps-3">';
+                data.winners.forEach(winner => {
+                    winnersHtml += `<li>${winner.position}. ${winner.username}</li>`;
+                });
+                winnersHtml += '</ul>';
+                resultsDiv.innerHTML = winnersHtml;
+            }
+            
+            // Show success message
+            showAlert('Winners selected successfully!', 'success');
+            
+            // Reload page after 2 seconds to update all data
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            throw new Error(data.error || 'Unknown error occurred');
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error: ' + error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add alert at the top of the content area
+    const content = document.getElementById('content');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('drawForm');
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            let isValid = true;
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.style.borderColor = '#dc3545';
+                } else {
+                    field.style.borderColor = '#ced4da';
+                }
+            });
+            if (!isValid) {
+                event.preventDefault();
+                alert('Please fill in all required fields.');
+            }
+        });
+    }
+    const startDateField = document.getElementById('id_start_date');
+    const endDateField = document.getElementById('id_end_date');
+    const resultDateField = document.getElementById('id_result_date');
+    if (startDateField && !startDateField.value) {
+        const now = new Date();
+        startDateField.value = formatDateTimeLocal(now);
+    }
+    if (endDateField && !endDateField.value) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        endDateField.value = formatDateTimeLocal(tomorrow);
+    }
+    if (resultDateField && !resultDateField.value) {
+        const resultsDate = new Date();
+        resultsDate.setDate(resultsDate.getDate() + 2);
+        resultsDate.setHours(14, 0, 0, 0);
+        resultDateField.value = formatDateTimeLocal(resultsDate);
+    }
+    function formatDateTimeLocal(date) {
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16);
+    }
+});
+</script>
+
+<script>
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? decodeURIComponent(v.pop()) : '';
+}
+
+async function runWinnerSelection(drawId, btn) {
+  if (!confirm('Run winner selection now? This will write winners to the database.')) return;
+  btn.disabled = true;
+  const urlTemplate = "{% url 'select_winners' 0 %}";
+  const url = urlTemplate.replace('/0/', '/' + drawId + '/');
+  const csrftoken = getCookie('csrftoken');
+
+  const count = document.getElementById('ws_count').value;
+  const seed = document.getElementById('ws_seed').value;
+  const force = document.getElementById('ws_force').checked ? '1' : '';
+
+  const form = new FormData();
+  if (count) form.append('count', count);
+  if (seed) form.append('seed', seed);
+  if (force) form.append('force', force);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: form,
+      credentials: 'same-origin'
+    });
+    btn.disabled = false;
+    if (!res.ok) {
+      const text = await res.text();
+      alert('Request failed: ' + res.status + ' ' + text);
+      return;
+    }
+    const data = await res.json();
+    if (data.error) {
+      alert('Error: ' + data.error);
+      return;
+    }
+    // render winners
+    const cont = document.getElementById('ws_results');
+    if (data.winners && data.winners.length) {
+      const html = '<h6 class="small mb-2">Current winners</h6><ul id="ws_winners_list" class="mb-0 ps-3">' +
+        data.winners.map(w => `<li>${w.position}. ${w.username} <small class="text-muted">${w.won_at}</small></li>`).join('') +
+        '</ul>';
+      cont.innerHTML = html;
+    } else {
+      cont.innerHTML = '<div class="small text-muted">No winners returned.</div>';
+    }
+  } catch (e) {
+    btn.disabled = false;
+    alert('Request failed.');
+  }
+}
+</script>
+
+</body>
+</html>
