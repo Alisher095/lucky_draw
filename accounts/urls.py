@@ -25,14 +25,12 @@ urlpatterns = [
     path('profile/',  views.profile_view,  name='profile'),
 
     # Dashboards
-# urls.py (cleaned)
-path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
-path('dashboard/user/',  views.user_dashboard,  name='user_dashboard'),
+    path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
+    path('dashboard/user/',  views.user_dashboard,  name='user_dashboard'),
+    path('dashboard/my-wins/', views.my_wins, name='my_wins'),
 
-# participants
-path('draws/<int:draw_id>/participants/', views.draw_participants, name='draw_participants'),
-
-  path('draws/<int:draw_id>/winner-selection/', views.winner_selection_page, name='winner_selection_page'),
+    # Winner selection
+    path('draws/<int:draw_id>/winner-selection/', views.winner_selection_page, name='winner_selection_page'),
     path('select-winners/<int:draw_id>/', views.select_winners, name='select_winners'),
     path('winner-selection-dashboard/', views.winner_selection_dashboard, name='winner_selection_dashboard'),
 

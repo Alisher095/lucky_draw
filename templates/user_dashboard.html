@@ -5,195 +5,357 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - Online Lucky Draw System</title>
     {% load static %}
-<link rel="stylesheet" href="{% static 'accounts/css/user.css' %}">
+    <link rel="stylesheet" href="{% static 'accounts/css/user.css' %}">
+    <link rel="stylesheet" href="{% static 'accounts/css/user_dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'accounts/css/user_dashboard_clean.css' %}">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
 </head>
-<body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+<body class="dashboard-body">
+    <nav class="navbar navbar-expand-lg navbar-dark dashboard-nav">
         <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-dice me-2"></i>Lucky Draw USER DASHBOARD
+            <a class="navbar-brand glow-text" href="{% url 'user_dashboard' %}">
+                <i class="fas fa-dice me-2"></i>
+                Lucky<span class="brand-highlight">Draw</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Draws</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Winners</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">How It Works</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link active" href="{% url 'user_dashboard' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'all_draws' %}">Draws</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'my_wins' %}">My Wins</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">How It Works</a></li>
                 </ul>
+                <div class="user-profile">
+                    <span class="user-welcome">Welcome, <strong>{{ user.username }}</strong></span>
+                    <div class="user-coin-balance">
+                        <i class="fas fa-coins"></i>
+                        <span>500 Coins</span>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
-    <!-- User Dashboard -->
-    <div class="user-dashboard">
+    <div class="user-dashboard container-fluid">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Your Lucky Dashboard</h1>
+            <p class="dashboard-subtitle">Track your participations, wins, and available draws</p>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-ticket-alt"></i></div>
+                    <div class="stat-content">
+                        <h3>{% if joined_draws %}{{ joined_draws|length }}{% else %}0{% endif %}</h3>
+                        <p>Participations</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                    <div class="stat-content">
+                        <h3>{{ user_wins|length|default:0 }}</h3>
+                        <p>Wins</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-gem"></i></div>
+                    <div class="stat-content">
+                        <h3>{{ available_draws|length }}</h3>
+                        <p>Available Draws</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <!-- Main Content -->
-        <div class="row">
+        <div class="row g-4">
             <div class="col-lg-8">
-<!-- Available Draws -->
-<div class="card mb-4">
-  <div class="card-header bg-white">
-    <h5 class="mb-0">Available Lucky Draws</h5>
-  </div>
-
-  <div class="card-body p-0">
-    <!-- Hero / promo container -->
-    <div class="position-relative overflow-hidden" style="background-image: url('https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1470&q=80'); background-size: cover; background-position: center; min-height: 220px;">
-      <div class="bg-dark bg-opacity-50 w-100 h-100 position-absolute top-0 start-0"></div>
-
-      <div class="container position-relative py-5" style="z-index: 2;">
-        <div class="row">
-          <div class="col-lg-8 text-white">
-            <h2 class="display-6 fw-bold">Explore All Lucky Draws</h2>
-            <p class="lead mb-3">See every draw, view details and participate — good luck!</p>
-          </div>
-
-          <div class="col-lg-4 d-flex align-items-center justify-content-lg-end">
-            <a href="{% url 'all_draws' %}" class="btn btn-lg btn-outline-light">View All Draws</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="container py-4">
-      <div class="row">
-        {% for draw in available_draws %}
-        <div class="col-md-6 mb-4">
-          <div class="card h-100">
-            <div class="position-relative">
-              <img src="https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1470&q=80"
-                   class="card-img-top" alt="{{ draw.title }}">
-              {% if draw.end_date %}
-                {% if draw.end_date <= today %}
-                  <span class="badge bg-secondary position-absolute top-0 start-0 m-2">Closed</span>
-                {% else %}
-                  <span class="badge bg-success position-absolute top-0 start-0 m-2">Open</span>
+                {% if messages %}
+                <div class="mb-3">
+                    {% for msg in messages %}
+                    <div class="alert alert-{{ msg.tags }} mb-2">{{ msg }}</div>
+                    {% endfor %}
+                </div>
                 {% endif %}
-              {% endif %}
-            </div>
 
-            <div class="card-body">
-              <h5 class="card-title mb-1">{{ draw.title }}</h5>
-              <p class="text-muted small mb-2">
-                {% if draw.end_date %}Ends: {{ draw.end_date }}{% endif %}
-                {% if draw.start_date %} • Starts: {{ draw.start_date }}{% endif %}
-              </p>
-
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted">{{ draw.prize_name }}{% if draw.prize_value %} — {{ draw.prize_value }}{% endif %}</span>
-                <span class="badge bg-primary">
-                  {{ draw.winners_count }} winner{% if draw.winners_count|default:0 > 1 %}s{% endif %}
-                </span>
-              </div>
-
-              <p class="small text-muted mb-3">
-                {% if draw.entries.all %}
-                  {{ draw.entries.count }} participant{% if draw.entries.count|default:0 != 1 %}s{% endif %}
-                {% else %}
-                  {{ draw.entry_set.count }} participant{% if draw.entry_set.count|default:0 != 1 %}s{% endif %}
-                {% endif %}
-              </p>
-
-              {% if draw.end_date and draw.end_date < today %}
-                <button class="btn btn-secondary w-100" disabled>Closed</button>
-              {% elif draw.already_joined %}
-                <button class="btn btn-outline-success w-100" disabled>Already Participated</button>
-              {% else %}
-                <form method="post" action="{% url 'join_draw' draw.id %}">
-                  {% csrf_token %}
-                  <button class="btn btn-primary w-100" type="submit">Participate Now</button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-          <div class="alert alert-info mb-0">Click the button above to view all draws.</div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-</div>
-
-
-
-            </div>
-            
-            <div class="col-lg-4">
-                <!-- Quick Actions -->
-                <div class="card mb-4">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0">Quick Actions</h5>
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="card-title">My Participations</h2>
+                            <p class="card-subtitle">Track your entries and results</p>
+                        </div>
+                        <a href="{% url 'all_draws' %}" class="btn btn-gradient">Browse Draws</a>
                     </div>
                     <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-primary mb-2">
-                                <i class="fas fa-ticket-alt me-2"></i> My Participations
-                            </button>
-                            <button class="btn btn-outline-primary mb-2">
-                                <i class="fas fa-trophy me-2"></i> My Wins
-                            </button>
-                            <button class="btn btn-outline-primary mb-2">
-                                <i class="fas fa-coins me-2"></i> Buy More Coins
-                            </button>
-                            <button class="btn btn-outline-primary mb-2">
-                                <i class="fas fa-gift me-2"></i> Refer a Friend
-                            </button>
-                            <button class="btn btn-outline-primary">
-                                <i class="fas fa-cog me-2"></i> Account Settings
-                            </button>
+                        {% if joined_draws %}
+                        <div class="table-responsive">
+                            <table class="table table-hover participation-table">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-4">Draw</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for draw in joined_draws %}
+                                    <tr class="table-row-animated">
+                                        <td>
+                                            <div class="draw-info">
+                                                <div class="draw-title">{{ draw.title }}</div>
+                                                <div class="draw-prize"><i class="fas fa-gift me-1"></i>{{ draw.prize_name }}</div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if draw.user_won %}
+                                            <div class="status-badge winner">Winner (#{% if draw.user_win_position %}{{ draw.user_win_position }}{% else %}1{% endif %})</div>
+                                            {% elif draw.winners_selected %}
+                                            <div class="status-badge closed">Closed</div>
+                                            {% else %}
+                                            <div class="status-badge open">Open</div>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end"><a href="{% url 'draw_detail' draw.id %}" class="btn btn-sm btn-view">View</a></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="fas fa-ticket-alt"></i></div>
+                            <h4>No Participations Yet</h4>
+                            <p>Join your first lucky draw to start winning!</p>
+                            <a href="{% url 'all_draws' %}" class="btn btn-primary mt-3">Explore Draws</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Available Lucky Draws</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for draw in available_draws %}
+                            <div class="col-md-6 mb-4">
+                                <div class="draw-card">
+                                    <div class="draw-card-header d-flex justify-content-between align-items-center">
+                                        <span class="open-badge">Open</span>
+                                        <small class="text-muted"><i class="far fa-clock me-1"></i>Instant</small>
+                                    </div>
+                                    <div class="draw-card-body">
+                                        <div class="draw-title">{{ draw.title }}</div>
+                                        <div class="draw-description">Prize: {{ draw.prize_name }}</div>
+                                        <div class="draw-prize-info mt-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="prize-icon"><i class="fas fa-gift"></i></div>
+                                                <div class="prize-details">
+                                                    <strong>{{ draw.prize_name }}</strong>
+                                                    {% if draw.prize_value %}
+                                                    <span class="prize-value">{{ draw.prize_value }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="draw-stats mt-2">
+                                            <div class="stat"><i class="fas fa-trophy"></i><span>{{ draw.winners_count }} winner{% if draw.winners_count|default:0 > 1 %}s{% endif %}</span></div>
+                                            <div class="stat"><i class="fas fa-users"></i><span>{{ draw.entries.count }} participants</span></div>
+                                        </div>
+                                        {% if draw.user_entry and draw.user_entry.is_verified %}
+                                        <div class="verification-badge verified mt-2"><i class="fas fa-check-circle"></i> Verified</div>
+                                        {% elif draw.user_entry and not draw.user_entry.is_verified %}
+                                        <div class="verification-badge pending mt-2"><i class="fas fa-clock"></i> Pending</div>
+                                        {% endif %}
+                                        {% if draw.winners_selected %}
+                                        <button class="btn btn-draw-closed w-100 mt-3" disabled>Draw Closed</button>
+                                        {% elif draw.already_joined %}
+                                        <button class="btn btn-draw-joined w-100 mt-3" disabled>Already Participated</button>
+                                        {% else %}
+                                        <form method="post" action="{% url 'join_draw' draw.id %}" class="mt-3">
+                                            {% csrf_token %}
+                                            <button class="btn btn-draw-participate w-100" type="submit">Participate Now</button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                    <div class="draw-card-footer">
+                                        <div class="draw-chance">
+                                            <div class="chance-meter"><div class="chance-fill" style="width: {% widthratio draw.entries.count 100 50 %}%"></div></div>
+                                            <span>Win Chance</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12">
+                                <div class="no-draws">
+                                    <i class="fas fa-search"></i>
+                                    <h4>No Available Draws</h4>
+                                    <p>Check back later for new lucky draw opportunities!</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Fairness & Transparency</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="fairness-grid">
+                            <div class="fairness-item">
+                                <div class="fairness-icon"><i class="fas fa-random"></i></div>
+                                <h5>Randomized Selection</h5>
+                                <p>Secure randomized algorithm with optional seed for audit</p>
+                            </div>
+                            <div class="fairness-item">
+                                <div class="fairness-icon"><i class="fas fa-eye"></i></div>
+                                <h5>Transparent Results</h5>
+                                <p>Results are published after winners are confirmed</p>
+                            </div>
+                            <div class="fairness-item">
+                                <div class="fairness-icon"><i class="fas fa-check-double"></i></div>
+                                <h5>Validated Entries</h5>
+                                <p>Your entries are validated before selection</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
+            <div class="col-lg-4">
+                <div class="dashboard-card quick-actions-card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Quick Actions</h2>
+                            <p class="card-subtitle">Jump into the moments that matter</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="quick-actions-grid">
+                            <a href="{% url 'all_draws' %}" class="quick-action-card">
+                                <div class="quick-action-icon primary"><i class="fas fa-ticket-alt"></i></div>
+                                <div>
+                                    <p class="quick-action-title">Browse Draws</p>
+                                    <p class="quick-action-desc">See the latest live draws and lock in your entries.</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'my_wins' %}" class="quick-action-card">
+                                <div class="quick-action-icon success"><i class="fas fa-trophy"></i></div>
+                                <div>
+                                    <p class="quick-action-title">My Wins</p>
+                                    <p class="quick-action-desc">Review your winning streak and claim prizes.</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'logout' %}" class="quick-action-card logout-card">
+                                <div class="quick-action-icon danger"><i class="fas fa-sign-out-alt"></i></div>
+                                <div>
+                                    <p class="quick-action-title">Sign Out</p>
+                                    <p class="quick-action-desc">Securely log out when you’re done for the day.</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card notifications-card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="card-title">Notifications</h2>
+                        <span class="badge notification-count">{% if messages %}{{ messages|length }}{% else %}0{% endif %}</span>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                        <div class="notifications-list">
+                            {% for msg in messages %}
+                            <div class="notification-item">
+                                <p class="mb-0">{{ msg }}</p>
+                                <small class="text-muted">Just now</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="no-notifications">
+                            <h5>No New Notifications</h5>
+                            <p class="text-muted">You're all caught up!</p>
+                        </div>
+                        {% endif %}
+                        <div class="notification-footer mt-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Winners are notified by email once results are published
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="card-title">Recent Winners</h2>
+                            <p class="card-subtitle">Latest 20</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="winner-tabs">
+                            <div class="tab-header">
+                                <button class="tab-btn active" data-tab="all">All Winners</button>
+                                <button class="tab-btn" data-tab="my">My Wins</button>
+                            </div>
+                            <div class="tab-content">
+                                <div class="tab-pane active" id="all-winners">
+                                    {% if results %}
+                                    <div class="winners-list">
+                                        {% for w in results %}
+                                        <div class="winner-item">
+                                            <div class="winner-name">{{ w.user.username }}</div>
+                                            <div class="winner-draw">{{ w.draw.title|truncatechars:20 }}</div>
+                                            <div class="position-badge">#{{ w.position }}</div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="no-winners">No winners announced yet</div>
+                                    {% endif %}
+                                </div>
+                                <div class="tab-pane" id="my-wins">
+                                    {% if results %}
+                                    <div class="winners-list">
+                                        {% for w in results %}
+                                        {% if w.user_id == request.user.id %}
+                                        <div class="winner-item">
+                                            <div class="winner-name">{{ w.draw.title }}</div>
+                                            <div class="winner-draw">Position #{{ w.position }}</div>
+                                            <div class="winner-date">{{ w.selected_at|date:"M d" }}</div>
+                                        </div>
+                                        {% endif %}
+                                        {% empty %}
+                                        <div class="no-winners">No wins yet. Keep trying!</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="no-winners">No wins yet. Keep trying!</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="live-indicator mt-2">Live Updates</div>
+                    </div>
+                </div>
+            </div>
         </div>
-        
     </div>
 
-    <!-- Bootstrap JS -->
+    <footer class="dashboard-footer">
+        <div class="container text-center">
+            © 2024 Lucky Draw System. Fair gaming for everyone.
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Simple JavaScript for demonstration
-        document.addEventListener('DOMContentLoaded', function() {
-            // Handle participation buttons
-            const participateButtons = document.querySelectorAll('.draw-card .btn');
-            participateButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const drawTitle = this.closest('.draw-card').querySelector('h5').textContent;
-                    alert(`You are participating in: ${drawTitle}\n\nIn a real application, this would deduct coins and register your participation.`);
-                });
-            });
-            
-            // Simulate coin purchase
-            document.querySelector('.btn-sm.btn-primary').addEventListener('click', function() {
-                alert('Coin purchase dialog would open here.');
-            });
-            
-            // Initialize tooltips
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        });
-    </script>
 </body>
 </html>

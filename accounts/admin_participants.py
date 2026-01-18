@@ -9,7 +9,7 @@ from django.utils import timezone
 import csv
 
 # import core models
-from .models import Draw, Entry
+from .models import Draw, Entry, Profile
 
 # EntryAdminAction is optional; import if present
 try:
@@ -21,7 +21,17 @@ except Exception:
 # small helpers / staff check
 # ---------------------------
 def staff_check(user):
-    return user.is_active and user.is_staff
+  if not user.is_active:
+    return False
+
+  try:
+    profile_role = getattr(user, 'profile', None)
+    if profile_role and getattr(profile_role, 'role', '') == 'admin':
+      return True
+  except Exception:
+    pass
+
+  return user.is_staff or user.is_superuser
 
 def staff_required(view_func):
     return login_required(user_passes_test(staff_check)(view_func))
@@ -190,8 +200,8 @@ def draw_participants(request, draw_id):
         'q': q,
         'csrf_token': csrf_token,
         'export_url': reverse('export_participants_csv', args=[draw.id]),
-        'all_draws_url': reverse('all_draws') if 'all_draws' in [u.name for u in request.resolver_match.app_names] else reverse('user_dashboard'),
-        'dashboard_url': reverse('user_dashboard'),
+        'all_draws_url': reverse('all_draws'),
+        'dashboard_url': reverse('admin_dashboard'),
         'toggle_url_base': reverse('toggle_entry_active', args=[0]).rsplit('0', 1)[0],  # base to append id
         'verify_url_base': reverse('verify_entry', args=[0]).rsplit('0', 1)[0],
         'has_more': has_more,

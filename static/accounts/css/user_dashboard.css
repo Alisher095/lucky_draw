@@ -1,0 +1,143 @@
+:root {
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --accent: #f59e0b;
+  --bg: #f7f9fc;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --success: #16a34a;
+  --shadow: 0 10px 25px rgba(17, 24, 39, 0.08);
+  --radius: 14px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.navbar {
+  background: linear-gradient(120deg, #111827, #1f2937);
+  box-shadow: 0 6px 20px rgba(17, 24, 39, 0.25);
+}
+
+.navbar .nav-link {
+  color: #e5e7eb;
+  transition: color 0.2s ease;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+  color: #ffffff;
+}
+
+.user-dashboard {
+  padding: 24px 18px 48px;
+}
+
+.card {
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: var(--card);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 35px rgba(17, 24, 39, 0.12);
+}
+
+.card-header {
+  border-bottom: 1px solid #eef2f7;
+}
+
+.badge.bg-success {
+  background: #16a34a !important;
+}
+
+.badge.bg-primary {
+  background: #4f46e5 !important;
+}
+
+.badge.bg-warning {
+  background: #fbbf24 !important;
+}
+
+.btn-outline-primary {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.table thead th {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background: #f3f4f6;
+}
+
+.nav-pills .nav-link {
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: var(--muted);
+  background: #f3f4f6;
+  margin-right: 8px;
+}
+
+.nav-pills .nav-link.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.list-group-item {
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.list-group-item:last-child {
+  border-bottom: 0;
+}
+
+.alert {
+  border-radius: 12px;
+}
+
+.card .btn {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(17, 24, 39, 0.1);
+}
+
+.card-body .small.text-muted {
+  color: var(--muted) !important;
+}
+
+@media (max-width: 992px) {
+  .user-dashboard {
+    padding: 18px 12px 36px;
+  }
+}

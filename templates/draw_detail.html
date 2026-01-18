@@ -10,18 +10,12 @@
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <h2 class="mb-1">{{ draw.title }}</h2>
-              <p class="text-muted mb-2 small">
-                {% if draw.start_date %}Starts: {{ draw.start_date }}{% endif %}
-                {% if draw.end_date %} • Ends: {{ draw.end_date }}{% endif %}
-                {% if draw.result_date %} • Result: {{ draw.result_date }}{% endif %}
-              </p>
+              <p class="text-muted mb-2 small">Instant draw</p>
             </div>
 
             <div class="text-end">
               {% if is_closed %}
                 <span class="badge bg-secondary">Closed</span>
-              {% elif draw.end_date and draw.end_date <= today %}
-                <span class="badge bg-danger">Ending Today</span>
               {% else %}
                 <span class="badge bg-success">Open</span>
               {% endif %}
@@ -57,7 +51,7 @@
                       {{ w.user.get_full_name|default:w.user.username }}
                       <small class="text-muted d-block">Position {{ w.position }}</small>
                     </div>
-                    <small class="text-muted">{{ w.won_at }}</small>
+                    <small class="text-muted">{{ w.selected_at }}</small>
                   </li>
                 {% endfor %}
               </ul>
@@ -94,12 +88,7 @@
         <div class="card-body text-center">
           <h5 class="mb-2">{{ draw.title }}</h5>
 
-          {% if draw.end_date %}
-            <p class="mb-1 small text-muted">Ends: {{ draw.end_date }}</p>
-          {% endif %}
-          {% if draw.start_date %}
-            <p class="mb-3 small text-muted">Starts: {{ draw.start_date }}</p>
-          {% endif %}
+          <p class="mb-3 small text-muted">Instant draw</p>
 
           {% if is_closed %}
             <span class="badge bg-secondary mb-3">Closed</span>

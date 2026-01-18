@@ -70,9 +70,6 @@ class DrawForm(forms.ModelForm):
             'prize_name',
             'prize_value',
             'winners_count',
-            'start_date',
-            'end_date',
-            'result_date',
         ]
         widgets = {
             'title': forms.TextInput(attrs={
@@ -100,17 +97,5 @@ class DrawForm(forms.ModelForm):
                 'class': 'form-control',
                 'min': '1',
                 'placeholder': 'How many winners?'
-            }),
-            'start_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
-            'end_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
-            'result_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
             }),
         }

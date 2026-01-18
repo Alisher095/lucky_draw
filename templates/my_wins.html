@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wins - Online Lucky Draw System</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'accounts/css/user.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'user_dashboard' %}">
+                <i class="fas fa-dice me-2"></i>Lucky Draw
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'user_dashboard' %}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'all_draws' %}">Draws</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'my_wins' %}">My Wins</a>
+                    </li>
+                </ul>
+                <a href="{% url 'logout' %}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="mb-1">My Wins</h2>
+                <div class="text-muted">Your prize bonds and winning history</div>
+            </div>
+            <a href="{% url 'user_dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Prize Bonds</h5>
+                    <span class="small text-muted">Total: {{ wins|length }}</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if wins %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Draw</th>
+                                <th>Prize</th>
+                                <th>Position</th>
+                                <th>Won On</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for w in wins %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ w.draw.title }}</div>
+                                    <div class="small text-muted">Draw ID: {{ w.draw.id }}</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ w.draw.prize_name }}</div>
+                                    <div class="small text-muted">{% if w.draw.prize_value %}{{ w.draw.prize_value }}{% else %}—{% endif %}</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">#{{ w.position }}</span>
+                                </td>
+                                <td>
+                                    <div class="small text-muted">{{ w.selected_at|date:"M d, Y" }}</div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="fas fa-trophy fa-2x mb-2"></i>
+                    <div>No wins yet. Keep participating to win!</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle me-2"></i>
+            This page is reserved for future enhancements like certificates, downloads, and prize delivery status.
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -30,7 +30,7 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link" href="{% url 'user_dashboard' %}">Dashboard</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'all_draws' %}">All Draws</a></li>
-          <li class="nav-item"><a class="nav-link" href="#">Winners</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'all_draws' %}">Winners</a></li>
         </ul>
 
         <ul class="navbar-nav ms-auto">
@@ -65,7 +65,7 @@
   <!-- Footer -->
   <footer class="bg-white border-top py-3">
     <div class="container text-center small text-muted">
-      © {{ now.year }} LuckyDraw. All rights reserved.
+      © {% now "Y" %} LuckyDraw. All rights reserved.
     </div>
   </footer>
 

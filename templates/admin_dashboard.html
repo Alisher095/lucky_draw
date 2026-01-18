@@ -6,11 +6,19 @@
     <title>Admin Dashboard - Online Lucky Draw System</title>
 {% load static %}
 <link rel="stylesheet" href="{% static 'accounts/css/admin.css' %}">
+<link rel="stylesheet" href="{% static 'accounts/css/admin_dashboard_interactive.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
+<body class="dashboard-body">
+  <div class="animated-bg-elements">
+    <div class="bg-circle circle-1"></div>
+    <div class="bg-circle circle-2"></div>
+    <div class="bg-circle circle-3"></div>
+    <div class="bg-circle circle-4"></div>
+  </div>
 <!-- In your admin dashboard sidebar -->
 <nav id="sidebar">
     <div class="sidebar-header">
@@ -141,20 +149,18 @@
                 <strong class="me-2">{{ d.title }}</strong>
                 {% if d.winners_selected %}
                   <span class="badge bg-success">Winners announced</span>
-                {% elif d.end_date and d.end_date <= today %}
-                  <span class="badge bg-info">Selection pending</span>
                 {% else %}
                   <span class="badge bg-secondary">Open</span>
                 {% endif %}
               </div>
-              <div class="small text-muted">Ends: {% if d.end_date %}{{ d.end_date }}{% else %}—{% endif %}</div>
+              <div class="small text-muted">Draw ID: {{ d.id }}</div>
             </div>
 
             <div class="text-end">
 <a href="{% url 'draw_participants' d.id %}" class="btn btn-sm btn-outline-primary mb-2">View Participants</a>
 
 {% if d.id %}
-  {% if d.winners_selected or d.end_date and d.end_date > today %}
+  {% if d.winners_selected %}
     <a href="#" class="btn btn-sm btn-success disabled mb-2" title="Selection disabled">Winner Selection</a>
   {% else %}
     <a href="{% url 'winner_selection_page' d.id %}" class="btn btn-sm btn-success mb-2"
@@ -176,10 +182,8 @@
                     {% endfor %}
                   </ul>
                 </div>
-              {% elif d.end_date and d.end_date <= today %}
-                <div class="small text-muted mt-2">Winners will be selected automatically by the system shortly.</div>
               {% else %}
-                <div class="small text-muted mt-2">Selection scheduled at: {% if d.result_date %}{{ d.result_date }}{% else %}after draw end{% endif %}</div>
+                <div class="small text-muted mt-2">Ready for winner selection.</div>
               {% endif %}
             </div>
           </div>
@@ -275,10 +279,6 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i> Winners already selected for this draw.
                 </div>
-            {% elif focus_draw.end_date and focus_draw.end_date > today %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i> Draw is still active. Cannot select winners yet.
-                </div>
             {% else %}
                 <div class="mb-2">
                     <label class="form-label small mb-1">Winners to pick</label>
@@ -337,6 +337,32 @@
     </div>
 </div>
   <!-- END new card -->
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Recent Winners</h5>
+      <span class="small text-muted">Latest 10</span>
+    </div>
+    <div class="card-body">
+      {% if recent_winners %}
+        <ul class="list-group list-group-flush">
+          {% for w in recent_winners %}
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold">{{ w.user.username }}</div>
+                <div class="small text-muted">{{ w.draw.title }}</div>
+              </div>
+              <div class="text-end small text-muted">
+                #{{ w.position }}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="small text-muted">No winners yet.</div>
+      {% endif %}
+    </div>
+  </div>
 
 </div>
                 </div>
@@ -398,27 +424,6 @@
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <h4 class="section-title"><i class="fas fa-calendar-alt me-2"></i>Schedule</h4>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                {{ draw_form.start_date.label_tag }}
-                                {{ draw_form.start_date }}
-                                {{ draw_form.start_date.errors }}
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                {{ draw_form.end_date.label_tag }}
-                                {{ draw_form.end_date }}
-                                {{ draw_form.end_date.errors }}
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                {{ draw_form.result_date.label_tag }}
-                                {{ draw_form.result_date }}
-                                {{ draw_form.result_date.errors }}
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="d-flex justify-content-end">
                         <button type="reset" class="btn btn-outline-secondary me-2">
                             <i class="fas fa-times me-1"></i>Cancel
@@ -463,92 +468,6 @@
   });
 </script>
 <script>
-    async function runWinnerSelection(drawId, btn) {
-    if (!confirm('Run winner selection now? This will write winners to the database.')) return;
-    
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Processing...';
-    btn.disabled = true;
-    
-    const url = `/select-winners/${drawId}/`;  // یا آپ کا اصل URL pattern
-    const csrftoken = getCookie('csrftoken');
-
-    const count = document.getElementById('ws_count').value;
-    const seed = document.getElementById('ws_seed').value;
-    const force = document.getElementById('ws_force').checked ? '1' : '';
-
-    const formData = new FormData();
-    formData.append('count', count);
-    if (seed) formData.append('seed', seed);
-    if (force) formData.append('force', force);
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || `HTTP error! status: ${response.status}`);
-        }
-
-        if (data.success) {
-            // Update winners list
-            const resultsDiv = document.getElementById('ws_results');
-            if (data.winners && data.winners.length > 0) {
-                let winnersHtml = '<h6 class="small mb-2">Current winners</h6><ul class="mb-0 ps-3">';
-                data.winners.forEach(winner => {
-                    winnersHtml += `<li>${winner.position}. ${winner.username}</li>`;
-                });
-                winnersHtml += '</ul>';
-                resultsDiv.innerHTML = winnersHtml;
-            }
-            
-            // Show success message
-            showAlert('Winners selected successfully!', 'success');
-            
-            // Reload page after 2 seconds to update all data
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            throw new Error(data.error || 'Unknown error occurred');
-        }
-        
-    } catch (error) {
-        console.error('Error:', error);
-        showAlert('Error: ' + error.message, 'danger');
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-}
-
-function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    // Add alert at the top of the content area
-    const content = document.getElementById('content');
-    content.insertBefore(alertDiv, content.firstChild);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentElement) {
-            alertDiv.remove();
-        }
-    }, 5000);
-}
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('drawForm');
     if (form) {
@@ -568,29 +487,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Please fill in all required fields.');
             }
         });
-    }
-    const startDateField = document.getElementById('id_start_date');
-    const endDateField = document.getElementById('id_end_date');
-    const resultDateField = document.getElementById('id_result_date');
-    if (startDateField && !startDateField.value) {
-        const now = new Date();
-        startDateField.value = formatDateTimeLocal(now);
-    }
-    if (endDateField && !endDateField.value) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        endDateField.value = formatDateTimeLocal(tomorrow);
-    }
-    if (resultDateField && !resultDateField.value) {
-        const resultsDate = new Date();
-        resultsDate.setDate(resultsDate.getDate() + 2);
-        resultsDate.setHours(14, 0, 0, 0);
-        resultDateField.value = formatDateTimeLocal(resultsDate);
-    }
-    function formatDateTimeLocal(date) {
-        return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 16);
     }
 });
 </script>
@@ -640,10 +536,10 @@ async function runWinnerSelection(drawId, btn) {
     }
     // render winners
     const cont = document.getElementById('ws_results');
-    if (data.winners && data.winners.length) {
-      const html = '<h6 class="small mb-2">Current winners</h6><ul id="ws_winners_list" class="mb-0 ps-3">' +
-        data.winners.map(w => `<li>${w.position}. ${w.username} <small class="text-muted">${w.won_at}</small></li>`).join('') +
-        '</ul>';
+        if (data.winners && data.winners.length) {
+            const html = '<h6 class="small mb-2">Current winners</h6><ul id="ws_winners_list" class="mb-0 ps-3">' +
+                data.winners.map(w => `<li>${w.position}. ${w.username} <small class="text-muted">${w.selected_at || ''}</small></li>`).join('') +
+                '</ul>';
       cont.innerHTML = html;
     } else {
       cont.innerHTML = '<div class="small text-muted">No winners returned.</div>';

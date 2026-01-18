@@ -15,13 +15,10 @@
             <div class="d-flex justify-content-between align-items-start">
               <div>
                 <h5 class="card-title mb-1">{{ draw.title }}</h5>
-                <p class="small text-muted mb-1">
-                  {% if draw.end_date %}Ends: {{ draw.end_date }}{% endif %}
-                  {% if draw.start_date %} • Starts: {{ draw.start_date }}{% endif %}
-                </p>
+                <p class="small text-muted mb-1">Instant draw</p>
               </div>
               <div class="text-end">
-                {% if draw.end_date and draw.end_date < today %}
+                {% if draw.winners_selected %}
                   <span class="badge bg-secondary">Closed</span>
                 {% else %}
                   <span class="badge bg-success">Open</span>

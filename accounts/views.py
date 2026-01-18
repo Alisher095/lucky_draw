@@ -1,42 +1,42 @@
 from datetime import date
+import random
+import secrets
+
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
-from django.db import models, transaction
+from django.db import models, OperationalError, transaction
+from django.db.models import Exists, OuterRef
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 
-from django.db.models import Exists, OuterRef
 from .forms import UserProfileForm, DrawForm
 from .models import Profile, Draw, Entry, Winner
 from .admin_participants import draw_participants, export_participants_csv, toggle_entry_active, verify_entry
-import secrets
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.db import transaction
-from django.utils import timezone
-from django.db import OperationalError
-from datetime import date
-import random
-import secrets
-from .models import Draw, Entry, Winner, Profile
+def _get_eligible_entries(draw):
+    """Fetch entries that can participate in the selection process."""
+    verified_qs = Entry.objects.filter(draw_id=draw.id, is_active=True, is_verified=True).select_related('user')
+    verified_entries = list(verified_qs)
+    if verified_entries:
+        return verified_entries, True
 
-def _run_selection_algorithm(draw, winners_needed, seed=None, allow_multiple_wins=False):
-    """Run the selection algorithm to pick winners"""
+    fallback_qs = Entry.objects.filter(draw_id=draw.id, is_active=True).select_related('user')
+    fallback_entries = list(fallback_qs)
+    return fallback_entries, False
+
+
+def _run_selection_algorithm(eligible_entries, winners_needed, seed=None, allow_multiple_wins=False):
+    """Run the selection algorithm to pick winners from filtered entries."""
+    if not eligible_entries:
+        return []
+
     try:
-        eligible_qs = Entry.objects.filter(draw_id=draw.id, is_active=1, is_verified=1).select_related('user')
-        eligible = list(eligible_qs)
-        if not eligible:
-            return []
-
         rng = random.Random(seed) if seed else secrets.SystemRandom()
-        # map user -> entries
         user_map = {}
-        for e in eligible:
+        for e in eligible_entries:
             user_map.setdefault(e.user_id, []).append(e)
         distinct_user_ids = list(user_map.keys())
 
@@ -49,7 +49,7 @@ def _run_selection_algorithm(draw, winners_needed, seed=None, allow_multiple_win
         else:
             if allow_multiple_wins:
                 for pos in range(1, winners_needed + 1):
-                    entry = rng.choice(eligible)
+                    entry = rng.choice(eligible_entries)
                     selected.append((pos, entry))
             else:
                 for pos, uid in enumerate(distinct_user_ids, start=1):
@@ -62,7 +62,6 @@ def _run_selection_algorithm(draw, winners_needed, seed=None, allow_multiple_win
 
 @login_required
 def admin_dashboard(request):
-    # simple admin guard
     try:
         if request.user.profile.role != 'admin':
             messages.error(request, "Access denied.")
@@ -71,16 +70,26 @@ def admin_dashboard(request):
         messages.error(request, "Profile missing. Access denied.")
         return redirect('user_dashboard')
 
+    if request.method == 'POST' and 'create_draw' in request.POST:
+        draw_form = DrawForm(request.POST)
+        if draw_form.is_valid():
+            new_draw = draw_form.save(commit=False)
+            new_draw.created_by = request.user
+            new_draw.save()
+            messages.success(request, 'New draw created successfully.')
+            return redirect('admin_dashboard')
+    else:
+        draw_form = DrawForm()
+
     draws_qs = Draw.objects.all().order_by('-created_at')
     draw_ids = list(draws_qs.values_list('id', flat=True))
-    
-    # Safe winners query
+
     try:
         winners_qs = Winner.objects.filter(draw_id__in=draw_ids).select_related('user').order_by('draw_id', 'position')
         winners_map = {}
         for w in winners_qs:
             winners_map.setdefault(w.draw_id, []).append(w)
-    except OperationalError as e:
+    except OperationalError:
         winners_map = {}
         messages.warning(request, "Warning: Could not load winners due to database schema issue. Please run migrations.")
 
@@ -95,14 +104,26 @@ def admin_dashboard(request):
     stats = {
         'total_draws': Draw.objects.count(),
         'total_entries': Entry.objects.count(),
-        'total_winners': Winner.objects.count() if 'winners_qs' in locals() else 0,
+        'total_winners': Winner.objects.count(),
+        'total_users': User.objects.count(),
+        'total_admins': Profile.objects.filter(role='admin').count(),
+        'total_regulars': Profile.objects.filter(role='user').count(),
     }
+
+    try:
+        recent_winners = Winner.objects.select_related('draw', 'user').order_by('-selected_at')[:10]
+    except OperationalError:
+        recent_winners = []
+        messages.warning(request, "Warning: Could not load recent winners due to database schema issue.")
 
     context = {
         'recent_draws': recent_draws,
         'today': date.today(),
+        'now': timezone.now(),
         'focus_draw': focus_draw,
         'stats': stats,
+        'draw_form': draw_form,
+        'recent_winners': recent_winners,
     }
     return render(request, 'admin_dashboard.html', context)
 
@@ -133,7 +154,6 @@ def winner_selection_page(request, draw_id):
     # Handle form submission
     if request.method == 'POST' or request.GET.get('run') == '1':
         try:
-            # Get parameters
             if request.method == 'POST':
                 winners_needed = int(request.POST.get('count', default_count))
                 seed = request.POST.get('seed') or None
@@ -142,8 +162,7 @@ def winner_selection_page(request, draw_id):
                 winners_needed = default_count
                 seed = None
                 force = False
-            
-            # Check for existing winners
+
             existing_winners = False
             try:
                 existing_winners = Winner.objects.filter(draw_id=draw.id).exists()
@@ -153,44 +172,44 @@ def winner_selection_page(request, draw_id):
             if existing_winners and not force:
                 messages.info(request, "Winners already exist. Use 'Force replace winners' to replace them.")
             else:
-                # Run selection algorithm
-                selection_preview = _run_selection_algorithm(draw, winners_needed, seed, allow_multiple)
-                if not selection_preview:
+                eligible_entries, has_verified_entries = _get_eligible_entries(draw)
+                if not eligible_entries:
                     messages.error(request, "No eligible participants found for this draw.")
                 else:
-                    # Save winners to database
-                    now = timezone.now()
-                    try:
-                        with transaction.atomic():
-                            if force and existing_winners:
-                                Winner.objects.filter(draw_id=draw.id).delete()
-                            
-                            for pos, entry in selection_preview:
-                                Winner.objects.create(
-                                    position=pos, 
-                                    won_at=now, 
-                                    draw_id=draw.id, 
-                                    user_id=entry.user_id
-                                )
-                            
-                            # Update draw status
-                            draw.winners_selected = True
-                            if hasattr(draw, 'result_date'):
-                                draw.result_date = now.date()
-                            draw.save()
-                        
-                        ran = True
-                        messages.success(request, f"Successfully selected {len(selection_preview)} winner(s)!")
-                        
-                        # Refresh winners list
+                    selection_preview = _run_selection_algorithm(eligible_entries, winners_needed, seed, allow_multiple)
+                    if not selection_preview:
+                        messages.error(request, "No eligible participants found for this draw.")
+                    else:
+                        now = timezone.now()
                         try:
-                            winners = Winner.objects.filter(draw=draw).select_related('user').order_by('position')
-                        except OperationalError:
-                            winners = []
-                            
-                    except Exception as e:
-                        messages.error(request, f"Error saving winners: {str(e)}")
-        
+                            with transaction.atomic():
+                                if force and existing_winners:
+                                    Winner.objects.filter(draw_id=draw.id).delete()
+                                for pos, entry in selection_preview:
+                                    Winner.objects.create(
+                                        position=pos,
+                                        selected_at=now,
+                                        draw_id=draw.id,
+                                        user_id=entry.user_id
+                                    )
+
+                                draw.winners_selected = True
+                                if hasattr(draw, 'result_date'):
+                                    draw.result_date = now.date()
+                                draw.save()
+
+                            ran = True
+                            messages.success(request, f"Successfully selected {len(selection_preview)} winner(s)!")
+                            try:
+                                winners = Winner.objects.filter(draw=draw).select_related('user').order_by('position')
+                            except OperationalError:
+                                winners = []
+
+                            if not has_verified_entries:
+                                messages.info(request, "Selection included participants that were not marked as verified.")
+
+                        except Exception as e:
+                            messages.error(request, f"Error saving winners: {str(e)}")
         except Exception as e:
             messages.error(request, f"Error during winner selection: {str(e)}")
 
@@ -227,17 +246,12 @@ def select_winners(request, draw_id):
     force = bool(request.POST.get('force'))
     allow_multiple = (getattr(draw, 'draw_type', '').lower() == 'multi')
 
-    # Find eligible entries
-    try:
-        eligible_qs = Entry.objects.filter(draw_id=draw.id, is_active=1, is_verified=1).select_related('user')
-        eligible = list(eligible_qs)
-        if not eligible:
-            return JsonResponse({'error': 'No eligible participants.'}, status=400)
-    except Exception as e:
-        return JsonResponse({'error': f'Error fetching participants: {str(e)}'}, status=500)
+    eligible_entries, has_verified_entries = _get_eligible_entries(draw)
+    if not eligible_entries:
+        return JsonResponse({'error': 'No eligible participants.'}, status=400)
 
     # Run algorithm
-    selected = _run_selection_algorithm(draw, winners_needed, seed, allow_multiple)
+    selected = _run_selection_algorithm(eligible_entries, winners_needed, seed, allow_multiple)
 
     if not selected:
         return JsonResponse({'error': 'No selection produced.'}, status=400)
@@ -251,9 +265,9 @@ def select_winners(request, draw_id):
             
             for pos, entry in selected:
                 Winner.objects.create(
-                    position=pos, 
-                    won_at=now, 
-                    draw_id=draw.id, 
+                    position=pos,
+                    selected_at=now,
+                    draw_id=draw.id,
                     user_id=entry.user_id
                 )
             
@@ -270,17 +284,24 @@ def select_winners(request, draw_id):
         winners = Winner.objects.filter(draw_id=draw.id).select_related('user').order_by('position')
         winners_data = [
             {
-                'position': w.position, 
-                'username': w.user.username, 
-                'won_at': w.won_at.strftime("%Y-%m-%d %H:%M:%S")
+                'position': w.position,
+                'username': w.user.username,
+                'selected_at': w.selected_at.strftime("%Y-%m-%d %H:%M:%S") if w.selected_at else ''
             } for w in winners
         ]
     except OperationalError:
         winners_data = []
 
+    payload = {'success': True, 'winners': winners_data}
+    if not has_verified_entries:
+        payload['warning'] = 'Selection included participants that were not marked as verified.'
+
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({'success': True, 'winners': winners_data})
-    
+        return JsonResponse(payload)
+
+    if not has_verified_entries:
+        messages.info(request, payload['warning'])
+
     messages.success(request, f"Selected {len(selected)} winner(s) successfully!")
     return redirect('winner_selection_page', draw_id=draw_id)
 
@@ -310,52 +331,6 @@ def winner_selection_dashboard(request):
         'draws': draws,
     }
     return render(request, 'winner_selection_dashboard.html', context)
-    # map user->entries
-    user_map = {}
-    for e in eligible:
-        user_map.setdefault(e.user_id, []).append(e)
-    distinct_user_ids = list(user_map.keys())
-    allow_multiple_wins = (getattr(draw, 'draw_type', '').lower() == 'multi')
-    rng = secrets.SystemRandom()
-    final_selected = []
-
-    if len(distinct_user_ids) >= winners_needed:
-        chosen_user_ids = rng.sample(distinct_user_ids, winners_needed)
-        for pos, uid in enumerate(chosen_user_ids, start=1):
-            entry = rng.choice(user_map[uid])
-            final_selected.append((pos, entry))
-    else:
-        if allow_multiple_wins:
-            for pos in range(1, winners_needed + 1):
-                entry = rng.choice(eligible)
-                final_selected.append((pos, entry))
-        else:
-            for pos, uid in enumerate(distinct_user_ids, start=1):
-                entry = rng.choice(user_map[uid])
-                final_selected.append((pos, entry))
-            messages.warning(request, f"Only {len(final_selected)} distinct participants available; selected those.")
-
-    now = timezone.now()
-    try:
-        with transaction.atomic():
-            for pos, entry in final_selected:
-                Winner.objects.create(
-                    position=pos,
-                    won_at=now,
-                    draw_id=draw.id,
-                    user_id=entry.user_id
-                )
-            if hasattr(draw, 'winners_selected'):
-                draw.winners_selected = True
-                if hasattr(draw, 'result_date'):
-                    draw.result_date = now.date()
-                draw.save()
-    except Exception:
-        messages.error(request, "Error saving winners; operation rolled back.")
-        return redirect('admin_dashboard')
-
-    messages.success(request, f"{len(final_selected)} winner(s) selected.")
-    return redirect('admin_dashboard')
 
 def staff_required(view_func):
     return user_passes_test(
@@ -455,44 +430,6 @@ def profile_view(request):
     return render(request, 'accounts/profile.html', {'form': form})
 
 
-@login_required
-def admin_dashboard(request):
-    if not _is_admin(request.user):
-        return redirect('home')
-    if request.method == 'POST' and 'create_draw' in request.POST:
-        draw_form = DrawForm(request.POST)
-        if draw_form.is_valid():
-            new_draw = draw_form.save(commit=False)
-            new_draw.created_by = request.user
-            new_draw.save()
-            messages.success(request, 'New draw created successfully.')
-            return redirect('admin_dashboard')
-    else:
-        draw_form = DrawForm()
-    total_users = User.objects.count()
-    total_draws = Draw.objects.count()
-    total_entries = Entry.objects.count()
-    total_winners = Winner.objects.count()
-    total_admins = Profile.objects.filter(role='admin').count()
-    total_regulars = Profile.objects.filter(role='user').count()
-    recent_users = User.objects.select_related('profile').order_by('-date_joined')[:5]
-    recent_draws = Draw.objects.select_related('created_by').order_by('-id')[:5]
-    context = {
-        'draw_form': draw_form,
-        'stats': {
-            'total_users': total_users,
-            'total_admins': total_admins,
-            'total_regulars': total_regulars,
-            'total_draws': total_draws,
-            'total_entries': total_entries,
-            'total_winners': total_winners,
-        },
-        'recent_users': recent_users,
-        'recent_draws': recent_draws,
-        'today': date.today(),
-        'now': timezone.now(),
-    }
-    return render(request, 'admin_dashboard.html', context)
 
 
 @staff_required
@@ -560,7 +497,7 @@ def user_dashboard(request):
     except Profile.DoesNotExist:
         return redirect('home')
     already = Entry.objects.filter(user=request.user, draw=OuterRef('pk'))
-    available_draws_qs = Draw.objects.filter(end_date__gte=date.today()).annotate(already_joined=Exists(already)).order_by('-start_date')[:50]
+    available_draws_qs = Draw.objects.filter(winners_selected=False).annotate(already_joined=Exists(already)).order_by('-created_at')[:50]
     draw_ids = list(available_draws_qs.values_list('id', flat=True))
     counts = Entry.objects.filter(draw_id__in=draw_ids).values('draw_id').order_by().annotate(count=models.Count('id'))
     counts_map = {c['draw_id']: c['count'] for c in counts}
@@ -586,12 +523,38 @@ def user_dashboard(request):
         d.user_won = bool(uw)
         d.user_win_position = uw.position if uw else None
         available_draws.append(d)
-    joined_draws = Draw.objects.filter(entries__user=request.user).distinct()
+    joined_draws_qs = Draw.objects.filter(entries__user=request.user).distinct()
+    user_wins = Winner.objects.filter(user=request.user).select_related('draw').order_by('-selected_at')
+    user_wins_map = {w.draw_id: w for w in user_wins}
+    joined_draws = []
+    for d in joined_draws_qs:
+        uw = user_wins_map.get(d.id)
+        d.user_won = bool(uw)
+        d.user_win_position = uw.position if uw else None
+        joined_draws.append(d)
     recent_wins = Winner.objects.select_related('draw', 'user').order_by('-selected_at')[:20]
     return render(request, 'user_dashboard.html', {
         'available_draws': available_draws,
         'joined_draws': joined_draws,
         'results': recent_wins,
+        'today': date.today(),
+        'now': timezone.now(),
+        'user_wins': user_wins,
+    })
+
+
+@login_required
+def my_wins(request):
+    try:
+        if request.user.profile.role != 'user':
+            return redirect('home')
+    except Profile.DoesNotExist:
+        return redirect('home')
+
+    wins = Winner.objects.filter(user=request.user).select_related('draw').order_by('-selected_at')
+
+    return render(request, 'my_wins.html', {
+        'wins': wins,
         'today': date.today(),
         'now': timezone.now(),
     })
@@ -607,8 +570,8 @@ def join_draw(request, draw_id):
     if request.method != 'POST':
         return redirect('draw_detail', pk=draw_id)
     draw = get_object_or_404(Draw, id=draw_id)
-    if draw.end_date and draw.end_date < date.today():
-        messages.error(request, 'This draw is already closed.')
+    if draw.winners_selected:
+        messages.error(request, 'This draw is closed and no longer accepting entries.')
         return redirect('draw_detail', pk=draw_id)
     with transaction.atomic():
         max_participants = getattr(draw, 'max_participants', None)
@@ -636,8 +599,8 @@ def draw_detail(request, pk):
     entries_count = entries_qs.count()
     user_joined = entries_qs.filter(user=request.user).exists()
     winners = Winner.objects.filter(draw=draw).select_related('user', 'entry').order_by('position')
-    is_closed = bool(draw.end_date and draw.end_date < date.today())
-    is_open = not is_closed and (not draw.start_date or draw.start_date <= date.today())
+    is_closed = bool(draw.winners_selected)
+    is_open = not is_closed
     context = {
         'draw': draw,
         'entries': entries_qs[:100],

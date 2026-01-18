@@ -15,7 +15,7 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="#">
+            <a class="navbar-brand" href="{% url 'home' %}">
                 <i class="fas fa-dice me-2"></i>LuckyDraw
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -24,7 +24,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">Home</a>
+                        <a class="nav-link active" href="{% url 'home' %}">Home</a>
                     </li>
                     <li class="nav-item">
                         <a href="{% url 'login' %}" class="btn btn-primary">Login</a>
@@ -49,9 +49,9 @@
             <h1 class="display-4 fw-bold mb-4">Online Lucky Draw System</h1>
             <p class="lead mb-5">Experience the thrill of winning with our fair and transparent lucky draw platform</p>
             <div class="d-flex justify-content-center gap-3 flex-wrap">
-                <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#registerModal">
+                <a class="btn btn-primary btn-lg" href="{% url 'register' %}">
                     <i class="fas fa-user-plus me-2"></i>Join Now
-                </button>
+                </a>
                 <button class="btn btn-outline-light btn-lg" data-bs-toggle="modal" data-bs-target="#aboutModal">
                     <i class="fas fa-info-circle me-2"></i>Learn More
                 </button>
@@ -227,9 +227,9 @@
         <div class="container text-center">
             <h2 class="mb-4">Ready to Try Your Luck?</h2>
             <p class="lead mb-4">Join thousands of participants in our fair and exciting lucky draws</p>
-            <button class="btn btn-light btn-lg px-5" data-bs-toggle="modal" data-bs-target="#registerModal">
+            <a class="btn btn-light btn-lg px-5" href="{% url 'register' %}">
                 Get Started <i class="fas fa-arrow-right ms-2"></i>
-            </button>
+            </a>
         </div>
     </section>
 
@@ -245,8 +245,8 @@
                     <h5 class="mb-4">Quick Links</h5>
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="#" class="text-decoration-none text-white-50">Home</a></li>
-                        <li class="mb-2"><a href="#" data-bs-toggle="modal" data-bs-target="#loginModal" class="text-decoration-none text-white-50">Login</a></li>
-                        <li class="mb-2"><a href="#" data-bs-toggle="modal" data-bs-target="#registerModal" class="text-decoration-none text-white-50">Register</a></li>
+                        <li class="mb-2"><a href="{% url 'login' %}" class="text-decoration-none text-white-50">Login</a></li>
+                        <li class="mb-2"><a href="{% url 'register' %}" class="text-decoration-none text-white-50">Register</a></li>
                     </ul>
                 </div>
                 <div class="col-lg-2 col-md-4 mb-4">
