@@ -20,6 +20,7 @@ urlpatterns = [
     path('draws/<int:draw_id>/participants/export/', admin_part.export_participants_csv, name='export_participants_csv'),
     path('entries/<int:entry_id>/toggle_active/', admin_part.toggle_entry_active, name='toggle_entry_active'),
     path('entries/<int:entry_id>/verify/', admin_part.verify_entry, name='verify_entry'),
+    path('draws/<int:draw_id>/winners/export/', views.download_draw_winners, name='download_draw_winners'),
 
     # Profile
     path('profile/',  views.profile_view,  name='profile'),

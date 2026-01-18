@@ -3,48 +3,127 @@
 
 {% block title %}Winner Selection{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/winner_selection.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="card">
-  <div class="card-header">Winner selection for {{ draw.title }}</div>
-  <div class="card-body">
+<div class="winner-selection-page">
+  <div class="ws-header">
+    <div>
+      <h2 class="ws-title">Winner Selection</h2>
+      <p class="ws-subtitle">Pick a draw, then run the unbiased random selection.</p>
+    </div>
+    <div class="ws-meta">
+      <span class="ws-pill">Draw: {{ draw.title }}</span>
+      <span class="ws-pill">Participants: {{ participant_count }}</span>
+      <span class="ws-pill">{{ allow_multiple|yesno:"Multi-winner draw,Single winner draw" }}</span>
+    </div>
+  </div>
+
+  <div class="ws-card">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-8">
+        <label for="drawSelect" class="form-label ws-label">Select Draw</label>
+        <select id="drawSelect" class="form-select" aria-label="Choose draw">
+          {% for opt in available_draws %}
+          <option value="{{ opt.id }}"{% if opt.id == draw.id %} selected{% endif %}>
+            {{ opt.title }} {% if opt.created_by %}- {{ opt.created_by.username }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-4 d-grid">
+        <a href="{% url 'winner_selection_dashboard' %}" class="btn ws-secondary-btn">Back to Dashboard</a>
+      </div>
+    </div>
+
     {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-
-    <form method="post" class="mb-4">
-      {% csrf_token %}
-      <div class="mb-3">
-        <label for="count" class="form-label">Winners to select</label>
-        <input type="number" class="form-control" id="count" name="count" min="1" value="{{ default_count }}" required>
-      </div>
-      <div class="mb-3">
-        <label for="seed" class="form-label">Seed (optional)</label>
-        <input type="text" class="form-control" id="seed" name="seed" value="{{ request.POST.seed|default:'' }}">
-        <small class="text-muted">Leave blank for random seed.</small>
-      </div>
-      <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="force" name="force" value="1">
-        <label class="form-check-label" for="force">Force replace existing winners</label>
-      </div>
-      <button type="submit" class="btn btn-primary">Select Winners</button>
-    </form>
-
-    <h5>Participants ({{ participant_count }})</h5>
-    <p class="text-muted">{{ allow_multiple|yesno:"Multi-winner draw,Single winner draw" }}</p>
-
-    {% if winners %}
-      <div class="list-group">
-        {% for winner in winners %}
-          <div class="list-group-item">
-            <strong>#{{ winner.position }}</strong> {{ winner.user.get_full_name|default:winner.user.username }} ({{ winner.user.email }})
-          </div>
+      <div class="mt-3">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       </div>
-    {% else %}
-      <p class="text-muted">No winners selected yet.</p>
     {% endif %}
   </div>
+
+  <div class="ws-card ws-form mt-3">
+    <form method="post" class="row g-3">
+      {% csrf_token %}
+      <div class="col-md-4">
+        <label for="count" class="form-label ws-label">Winners to select</label>
+        <input type="number" class="form-control" id="count" name="count" min="1" value="{{ default_count }}" required>
+      </div>
+      <div class="col-md-5">
+        <label for="seed" class="form-label ws-label">Seed (optional)</label>
+        <input type="text" class="form-control" id="seed" name="seed" value="{{ request.POST.seed|default:'' }}">
+        <small class="text-muted">Leave blank for a secure random seed.</small>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label ws-label">Actions</label>
+        <div class="d-grid">
+          <button type="submit" class="btn ws-action-btn">Select Winners</button>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="force" name="force" value="1">
+          <label class="form-check-label" for="force">Force replace existing winners</label>
+        </div>
+      </div>
+    </form>
+
+    <div class="ws-summary-grid">
+      <div class="ws-summary-item">
+        <p class="ws-summary-title">Draw ID</p>
+        <p class="ws-summary-value">#{{ draw.id }}</p>
+      </div>
+      <div class="ws-summary-item">
+        <p class="ws-summary-title">Draw Type</p>
+        <p class="ws-summary-value">{{ allow_multiple|yesno:"Multi,Single" }}</p>
+      </div>
+      <div class="ws-summary-item">
+        <p class="ws-summary-title">Winners Needed</p>
+        <p class="ws-summary-value">{{ default_count }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-card mt-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0">Selected Winners</h5>
+      {% if winners %}
+        <span class="ws-badge success">{{ winners|length }} selected</span>
+      {% else %}
+        <span class="ws-badge warning">Pending selection</span>
+      {% endif %}
+    </div>
+    <div class="mt-3">
+      {% if winners %}
+        <div class="ws-list">
+          {% for winner in winners %}
+            <div class="ws-list-item">
+              <div>
+                <strong>#{{ winner.position }}</strong>
+                {{ winner.user.get_full_name|default:winner.user.username }}
+              </div>
+              <span class="text-muted">{{ winner.user.email }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">No winners selected yet.</p>
+      {% endif %}
+    </div>
+  </div>
 </div>
+
+<script>
+  const select = document.getElementById('drawSelect');
+  select.addEventListener('change', () => {
+    const target = select.value;
+    if (!target) return;
+    window.location.href = `{% url 'winner_selection_page' 0 %}`.replace('/0/', `/${target}/`);
+  });
+</script>
 {% endblock %}

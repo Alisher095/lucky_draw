@@ -8,8 +8,33 @@
 <body>
     <div class="container mt-4">
         <h2><i class="fas fa-trophy"></i> Winner Selection Dashboard</h2>
-        <p class="text-muted">Select a draw to choose winners</p>
-        
+        <p class="text-muted">Choose a draw and run the unbiased random selection</p>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="drawSelectForm" class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label for="drawSelect" class="form-label">Select Draw</label>
+                        <select id="drawSelect" class="form-select" required>
+                            <option value="" selected disabled>Select a draw...</option>
+                            {% for draw in draws %}
+                            <option value="{{ draw.id }}">
+                                {{ draw.title }} — {{ draw.participant_count }} participants
+                                {% if draw.has_winners %}(Winners Selected){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-trophy"></i> Select Winners
+                        </button>
+                    </div>
+                </form>
+                <small class="text-muted d-block mt-2">You can review winners on the next screen before confirming.</small>
+            </div>
+        </div>
+
         <div class="row">
             {% for draw in draws %}
             <div class="col-md-6 mb-3">
@@ -27,8 +52,8 @@
                                 {% endif %}
                             </small>
                         </p>
-                        <a href="{% url 'winner_selection_page' draw.id %}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-trophy"></i> Select Winners
+                        <a href="{% url 'winner_selection_page' draw.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-trophy"></i> View Selection
                         </a>
                     </div>
                 </div>
@@ -40,5 +65,16 @@
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
     </div>
+
+    <script>
+        const form = document.getElementById('drawSelectForm');
+        const select = document.getElementById('drawSelect');
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const drawId = select.value;
+            if (!drawId) return;
+            window.location.href = `{% url 'winner_selection_page' 0 %}`.replace('/0/', `/${drawId}/`);
+        });
+    </script>
 </body>
 </html>

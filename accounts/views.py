@@ -1,6 +1,7 @@
 from datetime import date
 import random
 import secrets
+import csv
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -8,7 +9,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.db import models, OperationalError, transaction
 from django.db.models import Exists, OuterRef
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 
@@ -81,8 +82,9 @@ def admin_dashboard(request):
     else:
         draw_form = DrawForm()
 
-    draws_qs = Draw.objects.all().order_by('-created_at')
-    draw_ids = list(draws_qs.values_list('id', flat=True))
+    draws_qs = Draw.objects.all().order_by('-created_at').annotate(participant_count=models.Count('entries'))
+    draw_list = list(draws_qs)
+    draw_ids = [d.id for d in draw_list]
 
     try:
         winners_qs = Winner.objects.filter(draw_id__in=draw_ids).select_related('user').order_by('draw_id', 'position')
@@ -93,11 +95,10 @@ def admin_dashboard(request):
         winners_map = {}
         messages.warning(request, "Warning: Could not load winners due to database schema issue. Please run migrations.")
 
-    recent_draws = []
-    for d in draws_qs[:25]:
+    for d in draw_list:
         d.draw_winners = winners_map.get(d.id, [])
         d.winners_selected = bool(d.draw_winners)
-        recent_draws.append(d)
+    recent_draws = draw_list[:25]
 
     focus_draw = recent_draws[0] if recent_draws else None
 
@@ -109,6 +110,18 @@ def admin_dashboard(request):
         'total_admins': Profile.objects.filter(role='admin').count(),
         'total_regulars': Profile.objects.filter(role='user').count(),
     }
+
+    open_draws = sum(1 for d in draw_list if not d.winners_selected)
+    closed_draws = sum(1 for d in draw_list if d.winners_selected)
+    verified_entries = Entry.objects.filter(is_verified=True).count()
+    total_entries = stats['total_entries'] or 0
+    total_draws = stats['total_draws'] or 0
+    verification_rate = round((verified_entries / total_entries) * 100, 1) if total_entries else 0
+    avg_entries_per_draw = round(total_entries / total_draws, 1) if total_draws else 0
+
+    draws_overview = draw_list[:60]
+    top_draws = sorted(draw_list, key=lambda d: getattr(d, 'participant_count', 0), reverse=True)[:5]
+    recent_draws_report = draw_list[:10]
 
     try:
         recent_winners = Winner.objects.select_related('draw', 'user').order_by('-selected_at')[:10]
@@ -124,13 +137,54 @@ def admin_dashboard(request):
         'stats': stats,
         'draw_form': draw_form,
         'recent_winners': recent_winners,
+        'open_draws': open_draws,
+        'closed_draws': closed_draws,
+        'verification_rate': verification_rate,
+        'avg_entries_per_draw': avg_entries_per_draw,
+        'verified_entries': verified_entries,
+        'draws_overview': draws_overview,
+        'top_draws': top_draws,
+        'recent_draws_report': recent_draws_report,
     }
     return render(request, 'admin_dashboard.html', context)
+
+@login_required
+def download_draw_winners(request, draw_id):
+    try:
+        if request.user.profile.role != 'admin':
+            messages.error(request, 'Access denied.')
+            return redirect('admin_dashboard')
+    except Profile.DoesNotExist:
+        messages.error(request, 'Access denied.')
+        return redirect('admin_dashboard')
+
+    draw = get_object_or_404(Draw, id=draw_id)
+    winners = Winner.objects.filter(draw=draw).select_related('user').order_by('position')
+    if not winners:
+        messages.warning(request, 'No winners found for this draw.')
+        return redirect('admin_dashboard')
+
+    response = HttpResponse(content_type='text/csv')
+    filename = f"draw_{draw.id}_winners.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(['Position', 'Username', 'Email', 'Prize', 'Selected At'])
+
+    for winner in winners:
+        writer.writerow([
+            winner.position,
+            winner.user.username,
+            winner.user.email,
+            winner.draw.prize_name,
+            winner.selected_at.isoformat() if winner.selected_at else ''
+        ])
+    return response
 
 @login_required
 def winner_selection_page(request, draw_id):
     """Main winner selection page with form handling"""
     draw = get_object_or_404(Draw, id=draw_id)
+    available_draws = Draw.objects.order_by('-created_at')[:30]
     
     # Initialize variables
     ran = False
@@ -222,6 +276,7 @@ def winner_selection_page(request, draw_id):
         'selection_preview': selection_preview,
         'allow_multiple': allow_multiple,
         'today': date.today(),
+        'available_draws': available_draws,
     }
     
     return render(request, 'winner_selection.html', context)
@@ -496,6 +551,7 @@ def user_dashboard(request):
             return redirect('home')
     except Profile.DoesNotExist:
         return redirect('home')
+    user_entry_count = Entry.objects.filter(user=request.user).count()
     already = Entry.objects.filter(user=request.user, draw=OuterRef('pk'))
     available_draws_qs = Draw.objects.filter(winners_selected=False).annotate(already_joined=Exists(already)).order_by('-created_at')[:50]
     draw_ids = list(available_draws_qs.values_list('id', flat=True))
@@ -532,11 +588,63 @@ def user_dashboard(request):
         d.user_won = bool(uw)
         d.user_win_position = uw.position if uw else None
         joined_draws.append(d)
+    recent_entries = Entry.objects.filter(user=request.user).select_related('draw').order_by('-entry_time')[:12]
+    draw_history = []
+    for entry in recent_entries:
+        draw = entry.draw
+        win = user_wins_map.get(draw.id)
+        if win:
+            status = 'Winner'
+            status_class = 'winner'
+        elif draw.winners_selected:
+            status = 'Closed'
+            status_class = 'closed'
+        else:
+            status = 'Open'
+            status_class = 'open'
+        draw_history.append({
+            'draw': draw,
+            'entry': entry,
+            'status': status,
+            'status_class': status_class,
+            'position': win.position if win else None,
+        })
+
+    notifications = []
+    for win in user_wins[:5]:
+        notifications.append({
+            'title': f"You won {win.draw.title}",
+            'detail': f"Position #{win.position}",
+            'time': win.selected_at,
+            'type': 'win',
+        })
+    for entry in recent_entries[:5]:
+        notifications.append({
+            'title': f"Joined {entry.draw.title}",
+            'detail': f"Prize: {entry.draw.prize_name}",
+            'time': entry.entry_time,
+            'type': 'entry',
+        })
+    notifications = sorted(notifications, key=lambda n: n['time'], reverse=True)[:8]
+
+    user_recent_wins = []
+    for w in list(user_wins[:10]):
+        user_recent_wins.append({
+            'draw': w.draw,
+            'position': w.position,
+            'selected_at': w.selected_at,
+            'claim_status': 'Awaiting claim',
+        })
+
     recent_wins = Winner.objects.select_related('draw', 'user').order_by('-selected_at')[:20]
     return render(request, 'user_dashboard.html', {
         'available_draws': available_draws,
         'joined_draws': joined_draws,
-        'results': recent_wins,
+        'recent_winners': recent_wins,
+        'user_recent_wins': user_recent_wins,
+        'draw_history': draw_history,
+        'notifications': notifications,
+        'user_entry_count': user_entry_count,
         'today': date.today(),
         'now': timezone.now(),
         'user_wins': user_wins,

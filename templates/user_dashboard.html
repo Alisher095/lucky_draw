@@ -22,7 +22,7 @@
                 <i class="fas fa-dice me-2"></i>
                 Lucky<span class="brand-highlight">Draw</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -34,9 +34,9 @@
                 </ul>
                 <div class="user-profile">
                     <span class="user-welcome">Welcome, <strong>{{ user.username }}</strong></span>
-                    <div class="user-coin-balance">
+                    <div class="user-coin-balance" aria-live="polite">
                         <i class="fas fa-coins"></i>
-                        <span>500 Coins</span>
+                        <span>{{ user_entry_count|default:0 }} Credits</span>
                     </div>
                 </div>
             </div>
@@ -88,9 +88,15 @@
                             <h2 class="card-title">My Participations</h2>
                             <p class="card-subtitle">Track your entries and results</p>
                         </div>
-                        <a href="{% url 'all_draws' %}" class="btn btn-gradient">Browse Draws</a>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#participationsSection" aria-expanded="true" aria-controls="participationsSection">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <a href="{% url 'all_draws' %}" class="btn btn-gradient">Browse Draws</a>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div id="participationsSection" class="collapse show">
+                        <div class="card-body">
                         {% if joined_draws %}
                         <div class="table-responsive">
                             <table class="table table-hover participation-table">
@@ -133,6 +139,49 @@
                             <a href="{% url 'all_draws' %}" class="btn btn-primary mt-3">Explore Draws</a>
                         </div>
                         {% endif %}
+                    </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="card-title">Draw History</h2>
+                            <p class="card-subtitle">Your most recent entries and outcomes</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#drawHistorySection" aria-expanded="true" aria-controls="drawHistorySection">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <a href="{% url 'all_draws' %}" class="btn btn-hero btn-sm">Explore</a>
+                        </div>
+                    </div>
+                    <div id="drawHistorySection" class="collapse show">
+                        <div class="card-body">
+                        {% if draw_history %}
+                        <div class="draw-history-list">
+                            {% for item in draw_history %}
+                            <div class="draw-history-item">
+                                <div>
+                                    <div class="history-title">{{ item.draw.title }}</div>
+                                    <div class="history-meta">
+                                        Joined {{ item.entry.entry_time|date:"M d, Y" }} • Prize: {{ item.draw.prize_name }}
+                                    </div>
+                                </div>
+                                <div class="history-status {{ item.status_class }}">
+                                    {{ item.status }}{% if item.position %} #{{ item.position }}{% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="fas fa-history"></i></div>
+                            <h4>No Draw History Yet</h4>
+                            <p>Join a draw to start building your history.</p>
+                        </div>
+                        {% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -240,21 +289,28 @@
                     </div>
                     <div class="card-body">
                         <div class="quick-actions-grid">
-                            <a href="{% url 'all_draws' %}" class="quick-action-card">
+                            <a href="{% url 'all_draws' %}" class="quick-action-card" aria-label="Browse draws">
                                 <div class="quick-action-icon primary"><i class="fas fa-ticket-alt"></i></div>
                                 <div>
                                     <p class="quick-action-title">Browse Draws</p>
                                     <p class="quick-action-desc">See the latest live draws and lock in your entries.</p>
                                 </div>
                             </a>
-                            <a href="{% url 'my_wins' %}" class="quick-action-card">
+                            <a href="{% url 'my_wins' %}" class="quick-action-card" aria-label="View my wins">
                                 <div class="quick-action-icon success"><i class="fas fa-trophy"></i></div>
                                 <div>
                                     <p class="quick-action-title">My Wins</p>
                                     <p class="quick-action-desc">Review your winning streak and claim prizes.</p>
                                 </div>
                             </a>
-                            <a href="{% url 'logout' %}" class="quick-action-card logout-card">
+                            <a href="{% url 'profile' %}" class="quick-action-card" aria-label="Edit profile">
+                                <div class="quick-action-icon primary"><i class="fas fa-user"></i></div>
+                                <div>
+                                    <p class="quick-action-title">Edit Profile</p>
+                                    <p class="quick-action-desc">Update your contact details and preferences.</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'logout' %}" class="quick-action-card logout-card" aria-label="Sign out">
                                 <div class="quick-action-icon danger"><i class="fas fa-sign-out-alt"></i></div>
                                 <div>
                                     <p class="quick-action-title">Sign Out</p>
@@ -267,16 +323,25 @@
 
                 <div class="dashboard-card notifications-card mt-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h2 class="card-title">Notifications</h2>
-                        <span class="badge notification-count">{% if messages %}{{ messages|length }}{% else %}0{% endif %}</span>
+                        <div class="d-flex align-items-center gap-3">
+                            <h2 class="card-title mb-0">Notifications</h2>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#notificationsSection" aria-expanded="true" aria-controls="notificationsSection">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <span class="badge notification-count">{% if notifications %}{{ notifications|length }}{% else %}0{% endif %}</span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        {% if messages %}
-                        <div class="notifications-list">
-                            {% for msg in messages %}
-                            <div class="notification-item">
-                                <p class="mb-0">{{ msg }}</p>
-                                <small class="text-muted">Just now</small>
+                    <div id="notificationsSection" class="collapse show">
+                        <div class="card-body">
+                        {% if notifications %}
+                        <div class="notifications-list" aria-live="polite">
+                            {% for note in notifications %}
+                            <div class="notification-item {{ note.type }}">
+                                <p class="notification-title">{{ note.title }}</p>
+                                <p class="notification-detail">{{ note.detail }}</p>
+                                <small class="text-muted">{{ note.time|date:"M d, H:i" }}</small>
                             </div>
                             {% endfor %}
                         </div>
@@ -290,6 +355,7 @@
                             <i class="fas fa-info-circle me-1"></i>
                             Winners are notified by email once results are published
                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -299,18 +365,22 @@
                             <h2 class="card-title">Recent Winners</h2>
                             <p class="card-subtitle">Latest 20</p>
                         </div>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#recentWinnersSection" aria-expanded="true" aria-controls="recentWinnersSection">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                     </div>
-                    <div class="card-body">
+                    <div id="recentWinnersSection" class="collapse show">
+                        <div class="card-body">
                         <div class="winner-tabs">
-                            <div class="tab-header">
-                                <button class="tab-btn active" data-tab="all">All Winners</button>
-                                <button class="tab-btn" data-tab="my">My Wins</button>
+                            <div class="tab-header" role="tablist">
+                                <button class="tab-btn active" data-tab="all" role="tab" aria-selected="true" aria-controls="all-winners">All Winners</button>
+                                <button class="tab-btn" data-tab="my" role="tab" aria-selected="false" aria-controls="my-wins">My Wins</button>
                             </div>
                             <div class="tab-content">
-                                <div class="tab-pane active" id="all-winners">
-                                    {% if results %}
+                                <div class="tab-pane active" id="all-winners" role="tabpanel">
+                                    {% if recent_winners %}
                                     <div class="winners-list">
-                                        {% for w in results %}
+                                        {% for w in recent_winners %}
                                         <div class="winner-item">
                                             <div class="winner-name">{{ w.user.username }}</div>
                                             <div class="winner-draw">{{ w.draw.title|truncatechars:20 }}</div>
@@ -322,19 +392,16 @@
                                     <div class="no-winners">No winners announced yet</div>
                                     {% endif %}
                                 </div>
-                                <div class="tab-pane" id="my-wins">
-                                    {% if results %}
+                                <div class="tab-pane" id="my-wins" role="tabpanel">
+                                    {% if user_recent_wins %}
                                     <div class="winners-list">
-                                        {% for w in results %}
-                                        {% if w.user_id == request.user.id %}
+                                        {% for w in user_recent_wins %}
                                         <div class="winner-item">
                                             <div class="winner-name">{{ w.draw.title }}</div>
                                             <div class="winner-draw">Position #{{ w.position }}</div>
                                             <div class="winner-date">{{ w.selected_at|date:"M d" }}</div>
+                                            <div class="winner-status">{{ w.claim_status }}</div>
                                         </div>
-                                        {% endif %}
-                                        {% empty %}
-                                        <div class="no-winners">No wins yet. Keep trying!</div>
                                         {% endfor %}
                                     </div>
                                     {% else %}
@@ -343,7 +410,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="live-indicator mt-2">Live Updates</div>
+                        <div class="live-indicator mt-2" role="status">Live Updates • {{ now|date:"M d, H:i" }}</div>
                     </div>
                 </div>
             </div>
