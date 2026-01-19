@@ -1,53 +1,596 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    :root {
+        --primary-color: #4a6bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --danger-color: #dc3545;
+        --dark-color: #343a40;
+        --light-color: #f8f9fa;
+    }
+
+    /* Draw Card Styles */
+    .draw-card {
+        background: white;
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        margin-bottom: 25px;
+        height: 100%;
+        border-top: 4px solid var(--primary-color);
+    }
+
+    .draw-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    }
+
+    .draw-card.open {
+        border-top: 4px solid var(--success-color);
+    }
+
+    .draw-card.closed {
+        border-top: 4px solid var(--danger-color);
+        opacity: 0.9;
+    }
+
+    .draw-status {
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-open {
+        background: linear-gradient(45deg, var(--success-color), #5cd85c);
+        color: white;
+        animation: pulse 2s infinite;
+    }
+
+    .status-closed {
+        background: linear-gradient(45deg, var(--danger-color), #e05260);
+        color: white;
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+
+    .draw-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        margin-right: 15px;
+        font-size: 24px;
+        background: linear-gradient(135deg, var(--primary-color), #6c8aff);
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .draw-title {
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        margin-bottom: 5px;
+    }
+
+    .draw-description {
+        color: #666;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 15px;
+    }
+
+    .draw-meta {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #666;
+        font-size: 0.85rem;
+    }
+
+    .meta-item i {
+        color: var(--primary-color);
+        font-size: 0.9rem;
+    }
+
+    .prize-highlight {
+        background: linear-gradient(135deg, #fff9e6, #fff3cc);
+        padding: 8px 15px;
+        border-radius: 10px;
+        margin-top: 15px;
+        border-left: 3px solid var(--warning-color);
+    }
+
+    .prize-text {
+        color: #8b6b00;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    /* Action Buttons */
+    .btn-participate {
+        background: linear-gradient(135deg, var(--success-color), #5cd85c);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .btn-participate:hover {
+        background: linear-gradient(135deg, #218838, #4cc24c);
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .btn-view {
+        background: white;
+        color: var(--primary-color);
+        border: 2px solid var(--primary-color);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .btn-view:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .btn-disabled {
+        background: linear-gradient(135deg, #6c757d, #868e96);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        opacity: 0.7;
+        cursor: not-allowed;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    /* Empty State */
+    .empty-draws {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-top: 30px;
+    }
+
+    .empty-icon {
+        font-size: 80px;
+        color: #dee2e6;
+        margin-bottom: 20px;
+        opacity: 0.6;
+    }
+
+    /* Header Section */
+    .page-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        border-left: 5px solid var(--primary-color);
+    }
+
+    .stats-badge {
+        background: white;
+        padding: 8px 15px;
+        border-radius: 10px;
+        font-weight: 600;
+        color: var(--primary-color);
+        border: 2px solid #eef2ff;
+        display: inline-block;
+        margin-left: 15px;
+    }
+
+    /* Grid Layout */
+    .draws-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
+    }
+
+    @media (max-width: 768px) {
+        .draws-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .draw-card {
+            margin-bottom: 20px;
+        }
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+
+    .winner-feed {
+        background: #ffffff;
+        border-radius: 15px;
+        padding: 22px 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #eef2ff;
+        margin-bottom: 20px;
+    }
+
+    .winner-feed h4 {
+        margin-bottom: 15px;
+        font-weight: 600;
+        color: #343a40;
+    }
+
+    .winner-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f3ff;
+    }
+
+    .winner-row:last-child {
+        border-bottom: none;
+    }
+
+    .winner-label {
+        font-weight: 600;
+        color: #4a6bff;
+        font-size: 0.95rem;
+    }
+
+    .winner-meta {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+
+    .winner-prize {
+        font-weight: 600;
+        color: #28a745;
+    }
+
+    .filter-tab {
+        padding: 8px 20px;
+        border-radius: 25px;
+        background: white;
+        border: 2px solid #dee2e6;
+        color: #666;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filter-tab:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .filter-tab.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+    }
+
+    /* Card Header */
+    .card-header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .draw-type-badge {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        background: #eef2ff;
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+</style>
+
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">All Draws</h3>
-    <a class="btn btn-outline-secondary" href="{% url 'user_dashboard' %}">Back to Dashboard</a>
-  </div>
-
-  <div class="row g-3">
-    {% for draw in draws %}
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <h5 class="card-title mb-1">{{ draw.title }}</h5>
-                <p class="small text-muted mb-1">Instant draw</p>
-              </div>
-              <div class="text-end">
-                {% if draw.winners_selected %}
-                  <span class="badge bg-secondary">Closed</span>
-                {% else %}
-                  <span class="badge bg-success">Open</span>
-                {% endif %}
-              </div>
+    <!-- Header Section -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2" style="color: #333; font-weight: 700;">All Lucky Draws</h1>
+                <p class="mb-0" style="color: #666;">Participate in exciting draws and win amazing prizes!</p>
             </div>
-
-            <p class="text-muted small mb-2">{{ draw.description|truncatechars:120 }}</p>
-
-            <div class="d-flex justify-content-between align-items-center mt-3">
-              <div class="small text-muted">
-                {{ draw.winners_count }} winner{% if draw.winners_count|default:0 > 1 %}s{% endif %}
-              </div>
-              <div class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'draw_detail' draw.id %}">View</a>
-                <form method="post" action="{% url 'join_draw' draw.id %}">
-                  {% csrf_token %}
-                  <button class="btn btn-sm btn-primary">Participate</button>
-                </form>
-              </div>
-            </div>
-          </div>
+            <a class="btn btn-outline-primary" href="{% url 'user_dashboard' %}" 
+               style="padding: 10px 20px; border-radius: 8px; font-weight: 600;">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
         </div>
-      </div>
-    {% empty %}
-      <div class="col-12">
-        <div class="alert alert-info">No draws found.</div>
-      </div>
-    {% endfor %}
-  </div>
+        
+        <!-- Stats -->
+        <div class="mt-4">
+            <span class="stats-badge">
+                <i class="fas fa-dice me-2"></i>{{ draws|length }} Draw{{ draws|pluralize:"s" }} Available
+            </span>
+            <span class="stats-badge">
+                <i class="fas fa-gift me-2"></i>{{ open_draws_count }} Open for Entry
+            </span>
+        </div>
+
+        {% if recent_winners %}
+        <div class="winner-feed">
+            <h4>Latest Winners</h4>
+            {% for winner in recent_winners %}
+            <div class="winner-row">
+                <div>
+                    <div class="winner-label">{{ winner.user.get_full_name|default:winner.user.username }}</div>
+                    <div class="winner-meta">{{ winner.draw.title }} • Position #{{ winner.position }}</div>
+                </div>
+                <div class="text-end">
+                    {% if winner.draw.prize_name %}
+                    <div class="winner-prize">{{ winner.draw.prize_name }}</div>
+                    {% endif %}
+                    <div class="winner-meta">
+                        {{ winner.selected_at|date:"M d, Y" }} at {{ winner.selected_at|date:"h:i A" }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+        <div class="filter-tab active" onclick="filterDraws('all')">All Draws</div>
+        <div class="filter-tab" onclick="filterDraws('open')">Open Now</div>
+        <div class="filter-tab" onclick="filterDraws('closed')">Closed</div>
+        <div class="filter-tab" onclick="filterDraws('instant')">Instant Draws</div>
+    </div>
+
+    <!-- Draws Grid -->
+    {% if draws %}
+    <div class="draws-grid">
+        {% for draw in draws %}
+        <div class="draw-card {% if draw.winners_selected %}closed{% else %}open{% endif %}" 
+             data-status="{% if draw.winners_selected %}closed{% else %}open{% endif %}" 
+             data-type="instant">
+            <div class="card-body p-4">
+                <!-- Card Header -->
+                <div class="card-header-section">
+                    <div class="d-flex align-items-start" style="flex: 1;">
+                        <div class="draw-icon">
+                            <i class="fas fa-dice"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h5 class="draw-title">{{ draw.title }}</h5>
+                                <span class="draw-status {% if draw.winners_selected %}status-closed{% else %}status-open{% endif %}">
+                                    {% if draw.winners_selected %}
+                                        <i class="fas fa-lock me-1"></i>Closed
+                                    {% else %}
+                                        <i class="fas fa-unlock me-1"></i>Open
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <span class="draw-type-badge">Instant Draw</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <p class="draw-description">{{ draw.description|truncatechars:150 }}</p>
+
+                <!-- Prize Highlight -->
+                {% if draw.prize_name %}
+                <div class="prize-highlight">
+                    <p class="prize-text mb-0">
+                        <i class="fas fa-gift me-2"></i>
+                        Prize: {{ draw.prize_name }}
+                        {% if draw.prize_value %}
+                        <span class="ms-2" style="color: var(--success-color);">
+                            (Value: {{ draw.prize_value }})
+                        </span>
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Meta Information -->
+                <div class="draw-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-trophy"></i>
+                        <span>{{ draw.winners_count }} Winner{{ draw.winners_count|default:0|pluralize }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-users"></i>
+                        <span>{{ draw.participants_count|default:"0" }} Participants</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 mt-4">
+                    <a class="btn-view" style="flex: 1;" href="{% url 'draw_detail' draw.id %}">
+                        <i class="fas fa-eye"></i> View Details
+                    </a>
+                    
+                    {% if draw.winners_selected %}
+                    <button class="btn-disabled" style="flex: 1;" disabled>
+                        <i class="fas fa-lock"></i> Draw Closed
+                    </button>
+                    {% else %}
+                    <form method="post" action="{% url 'join_draw' draw.id %}" style="flex: 1;">
+                        {% csrf_token %}
+                        <button class="btn-participate" type="submit" style="width: 100%;">
+                            <i class="fas fa-sign-in-alt"></i> Participate
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-draws">
+        <i class="fas fa-dice empty-icon"></i>
+        <h3 class="mb-3" style="color: #6c757d;">No Draws Available</h3>
+        <p class="mb-4" style="color: #6c757d; max-width: 500px; margin: 0 auto;">
+            Currently there are no active draws. Please check back later for new lucky draw opportunities.
+        </p>
+        <a href="{% url 'user_dashboard' %}" class="btn btn-primary" style="padding: 10px 25px; border-radius: 8px;">
+            <i class="fas fa-home me-2"></i>Return to Dashboard
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Info Card -->
+    {% if draws %}
+    <div class="alert alert-light mt-5" style="border: 1px solid #dee2e6; border-radius: 15px; background: white;">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-info-circle fa-2x" style="color: var(--primary-color);"></i>
+            </div>
+            <div>
+                <h5 class="mb-2" style="color: #333;">How to Participate?</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3" style="width: 30px; height: 30px; background: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">1</div>
+                            <span style="color: #666;">Find an open draw</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3" style="width: 30px; height: 30px; background: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">2</div>
+                            <span style="color: #666;">Click 'Participate'</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3" style="width: 30px; height: 30px; background: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">3</div>
+                            <span style="color: #666;">Wait for results</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3" style="width: 30px; height: 30px; background: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">4</div>
+                            <span style="color: #666;">Check 'My Wins'</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+    // Filter draws by status/type
+    function filterDraws(filter) {
+        const cards = document.querySelectorAll('.draw-card');
+        const tabs = document.querySelectorAll('.filter-tab');
+        
+        // Update active tab
+        tabs.forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Filter cards
+        cards.forEach(card => {
+            switch(filter) {
+                case 'all':
+                    card.style.display = 'block';
+                    break;
+                case 'open':
+                    card.style.display = card.dataset.status === 'open' ? 'block' : 'none';
+                    break;
+                case 'closed':
+                    card.style.display = card.dataset.status === 'closed' ? 'block' : 'none';
+                    break;
+                case 'instant':
+                    card.style.display = card.dataset.type === 'instant' ? 'block' : 'none';
+                    break;
+            }
+        });
+        
+        // Show message if no cards visible
+        const visibleCards = Array.from(cards).filter(card => card.style.display !== 'none');
+        if (visibleCards.length === 0) {
+            showNoResultsMessage(filter);
+        }
+    }
+    
+    function showNoResultsMessage(filter) {
+        // You can implement a message display here if needed
+        console.log(`No ${filter} draws found`);
+    }
+    
+    // Add hover effects to cards
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.draw-card');
+        
+        cards.forEach(card => {
+            // Add entrance animation
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100);
+        });
+        
+        // Count open draws for stats badge
+        const openDraws = Array.from(cards).filter(card => card.dataset.status === 'open');
+        const openDrawsBadge = document.querySelector('.stats-badge:nth-child(2)');
+        if (openDrawsBadge) {
+            openDrawsBadge.innerHTML = `<i class="fas fa-gift me-2"></i>${openDraws.length} Open for Entry`;
+        }
+    });
+</script>
 {% endblock %}

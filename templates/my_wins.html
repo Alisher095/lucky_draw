@@ -248,6 +248,76 @@
             border-radius: 50%;
             animation: sparkle 1.5s infinite;
         }
+
+        /* Achievement Wall */
+        .achievement-wall {
+            background: #ffffff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            border: 1px solid #f1f1f1;
+        }
+
+        .achievement-card {
+            border-radius: 12px;
+            padding: 18px;
+            background: #f8f9ff;
+            border: 1px dashed #dfe3ff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .achievement-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            background: linear-gradient(135deg, #4a6bff, #6f86ff);
+        }
+
+        .achievement-locked {
+            background: #f6f6f6;
+            color: #9aa0a6;
+        }
+
+        .achievement-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .achievement-subtitle {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        /* Spotlight Banner */
+        .spotlight-banner {
+            background: linear-gradient(135deg, #f6f7ff 0%, #ffffff 100%);
+            border-radius: 15px;
+            padding: 20px 25px;
+            border: 1px solid #e7e9ff;
+            margin-bottom: 25px;
+        }
+
+        .spotlight-title {
+            font-weight: 700;
+            color: #4a6bff;
+        }
+
+        .spotlight-badge {
+            background: #eef2ff;
+            color: #4a6bff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -331,6 +401,66 @@
             <i class="fas fa-trophy trophy-icon"></i>
             <h3 class="mb-3" style="color: #8b6b00;">Congratulations! You're a Winner!</h3>
             <p class="mb-0" style="color: #666;">You've won {{ wins|length }} prize{{ wins|length|pluralize }} in our lucky draws. Keep participating for more chances to win!</p>
+        </div>
+
+        <!-- Winner Spotlight -->
+        <div class="spotlight-banner d-flex flex-wrap justify-content-between align-items-center">
+            <div class="mb-2 mb-md-0">
+                <div class="spotlight-title">Winner Spotlight</div>
+                <div class="text-muted">Celebrating {{ request.user.username }}'s achievements</div>
+            </div>
+            <div class="spotlight-badge">
+                <i class="fas fa-crown me-2"></i>{{ wins|length }} Total Wins
+            </div>
+        </div>
+
+        <!-- Achievement Wall -->
+        <div class="achievement-wall">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Achievement Wall</h5>
+                <small class="text-muted">Unlock badges as you win</small>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="achievement-card">
+                        <div class="achievement-icon {% if not first_place_wins %}achievement-locked{% endif %}">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <div>
+                            <div class="achievement-title">Champion</div>
+                            <div class="achievement-subtitle">
+                                {% if first_place_wins %}First place winner ({{ first_place_wins }}){% else %}Win 1st place to unlock{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="achievement-card">
+                        <div class="achievement-icon {% if not recent_wins %}achievement-locked{% endif %}">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <div class="achievement-title">Monthly Star</div>
+                            <div class="achievement-subtitle">
+                                {% if recent_wins %}Won {{ recent_wins }} time{{ recent_wins|pluralize }} this month{% else %}Win this month to unlock{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="achievement-card">
+                        <div class="achievement-icon {% if not total_prize_value %}achievement-locked{% endif %}">
+                            <i class="fas fa-gift"></i>
+                        </div>
+                        <div>
+                            <div class="achievement-title">Prize Collector</div>
+                            <div class="achievement-subtitle">
+                                {% if total_prize_value %}Total prizes worth {{ total_prize_value }}{% else %}Earn your first prize to unlock{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Wins Grid -->
@@ -460,6 +590,7 @@
         // Add sparkle effect to winning cards
         document.addEventListener('DOMContentLoaded', function() {
             const winCards = document.querySelectorAll('.win-card');
+                const winsCount = Number('{{ wins|length }}');
             
             winCards.forEach(card => {
                 if (card.classList.contains('first-place')) {
@@ -480,7 +611,7 @@
             }
 
             // Celebration confetti on page load for winners
-            if ({{ wins|length }} > 0) {
+            if (winsCount > 0) {
                 setTimeout(() => {
                     const celebrationBadge = document.querySelector('.celebration-badge');
                     if (celebrationBadge) {

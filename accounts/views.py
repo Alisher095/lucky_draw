@@ -465,8 +465,17 @@ def logout_view(request):
 
 @login_required
 def all_draws(request):
-    draws = Draw.objects.order_by('-end_date').select_related('created_by')
-    return render(request, 'draw_list.html', {'draws': draws, 'today': date.today()})
+    draws = Draw.objects.order_by('-end_date').select_related('created_by').annotate(
+        participants_count=models.Count('entries'),
+    )
+    open_draws_count = draws.filter(winners_selected=False).count()
+    recent_winners = Winner.objects.select_related('draw', 'user').order_by('-selected_at')[:5]
+    return render(request, 'draw_list.html', {
+        'draws': draws,
+        'today': date.today(),
+        'open_draws_count': open_draws_count,
+        'recent_winners': recent_winners,
+    })
 
 
 @login_required
